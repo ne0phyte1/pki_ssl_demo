@@ -1,0 +1,31 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir             = ./ca
+certs           = $dir/certs
+new_certs_dir   = $dir/newcerts
+database        = $dir/index.txt
+serial          = $dir/serial
+private_key     = $dir/private/root.key
+certificate     = $dir/certs/root.crt
+
+default_md      = sha256
+default_days    = 3650
+preserve        = no
+
+policy          = policy_any
+
+[ policy_any ]
+commonName      = supplied
+
+[ req ]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_ca
+
+[ req_distinguished_name ]
+commonName = Common Name (e.g. Root CA)
+
+[ v3_ca ]
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
