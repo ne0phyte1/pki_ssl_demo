@@ -7,11 +7,11 @@ SERVER_PORT = 4433
 def main():
     context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
-    context.load_verify_locations("ca-chain.crt")
+    context.load_verify_locations("ca/certs/root.crt")
 
     context.load_cert_chain(
-        certfile="client/client.crt",
-        keyfile="client/client.key"
+        "client/client_fullchain.crt",
+        "client/client.key"
     )
 
     sock = socket.create_connection((SERVER_HOST, SERVER_PORT))
@@ -20,7 +20,7 @@ def main():
     print("[✓] TLS Handshake OK")
     print("Server Cert:", tls.getpeercert())
 
-    tls.sendall(b"Hello TLS Server!")
+    tls.sendall(b"Hello from client via Issuing CA!")
     data = tls.recv(1024)
     print("Received:", data.decode())
 

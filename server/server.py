@@ -8,11 +8,12 @@ def main():
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
     context.load_cert_chain(
-        certfile="server/server.crt",
-        keyfile="server/server.key"
+        "server/server_fullchain.crt",
+        "server/server.key"
     )
 
-    context.load_verify_locations("ca-chain.crt")
+    context.load_verify_locations("ca/certs/root.crt")
+
     context.verify_mode = ssl.CERT_REQUIRED
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -1,0 +1,40 @@
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir             = ./ca/issuing
+certs           = $dir/certs
+new_certs_dir   = $dir/newcerts
+database        = $dir/index.txt
+serial          = $dir/serial
+private_key     = $dir/private/issuing.key
+certificate     = $dir/certs/issuing.crt
+
+default_md      = sha256
+default_days    = 825
+preserve        = no
+policy          = policy_any
+x509_extensions = usr_cert
+
+[ policy_any ]
+commonName      = supplied
+
+[ req ]
+distinguished_name = req_distinguished_name
+x509_extensions    = v3_ca
+
+[ req_distinguished_name ]
+commonName = Common Name (e.g. Issuing CA)
+
+[ v3_ca ]
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage         = critical, digitalSignature, cRLSign, keyCertSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+
+[ usr_cert ]
+basicConstraints = CA:false
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
