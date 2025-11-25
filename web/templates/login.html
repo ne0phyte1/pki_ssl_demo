@@ -1,0 +1,36 @@
+<!-- web/templates/login.html -->
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>安全聊天登录</title>
+    <style>
+      body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+             background:#f5f5f5; display:flex; align-items:center; justify-content:center;
+             height:100vh; margin:0; }
+      .card { background:#fff; padding:24px 32px; border-radius:16px;
+              box-shadow:0 10px 30px rgba(0,0,0,.08); width:320px; }
+      h1 { font-size:20px; margin-top:0; text-align:center; }
+      label { display:block; margin-bottom:8px; font-size:14px; color:#555; }
+      input[type=text] { width:100%; padding:8px 10px; border-radius:8px; border:1px solid #ccc;
+                         box-sizing:border-box; font-size:14px; }
+      button { margin-top:16px; width:100%; padding:8px 0; border:none; border-radius:999px;
+               background:#1677ff; color:#fff; font-size:15px; cursor:pointer; }
+      button:hover { background:#1559c9; }
+      .error { color:#c00; font-size:13px; margin-top:8px; text-align:center; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>安全聊天室登录</h1>
+      <form method="post">
+        <label for="username">请输入聊天昵称（比如 alice / bob）</label>
+        <input id="username" name="username" type="text" autocomplete="off">
+        <button type="submit">进入聊天室</button>
+        {% if error %}
+          <div class="error">{{ error }}</div>
+        {% endif %}
+      </form>
+    </div>
+  </body>
+</html>

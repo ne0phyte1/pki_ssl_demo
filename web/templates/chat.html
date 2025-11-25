@@ -1,0 +1,46 @@
+<!-- web/templates/chat.html -->
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>安全聊天室</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="title">在线用户</div>
+          <div class="me">我：{{ username }}</div>
+        </div>
+        <ul id="user-list"></ul>
+        <a class="logout" href="{{ url_for('logout') }}">退出登录</a>
+      </aside>
+
+      <main class="chat">
+        <header class="chat-header">
+          <div>简化 QQ 安全通讯系统</div>
+        </header>
+
+        <section id="messages" class="messages">
+          {% for msg in history %}
+            <div class="msg">
+              <span class="time">[{{ msg.time }}]</span>
+              <span class="user">{{ msg.user }}：</span>
+              <span class="text">{{ msg.text }}</span>
+            </div>
+          {% endfor %}
+        </section>
+
+        <form id="chat-form" class="chat-input">
+          <input id="msg-input" type="text" placeholder="按 Enter 发送消息..." autocomplete="off">
+          <button type="submit">发送</button>
+        </form>
+      </main>
+    </div>
+
+    <!-- Socket.IO 客户端 -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+  </body>
+</html>
