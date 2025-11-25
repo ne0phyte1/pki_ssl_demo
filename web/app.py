@@ -1,8 +1,10 @@
 # web/app.py
 import os
+import sqlite3
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_socketio import SocketIO, emit
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -13,33 +15,108 @@ app.secret_key = os.urandom(24)  # 简单用随机 secret，正式可以写死
 # 让 SocketIO 用 eventlet 作为异步引擎
 socketio = SocketIO(app, async_mode="threading")
 
+# 数据库初始化
+def init_db():
+    """初始化SQLite数据库"""
+    conn = sqlite3.connect('./web/users.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# 初始化数据库
+init_db()
+
 # 记录在线用户：sid -> username
 online_users = {}
 
 # 简单聊天记录（内存，最多保存 100 条）
 chat_history = []  # 每条：{"user": "...", "text": "...", "time": "HH:MM:SS"}
 
-# ---------------- HTTP 路由：登录 / 聊天页 ----------------
+# ---------------- 用户认证函数 ----------------
+
+def register_user(username, password):
+    """注册新用户"""
+    conn = sqlite3.connect('./web/users.db')
+    cursor = conn.cursor()
+    try:
+        password_hash = generate_password_hash(password)
+        cursor.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', 
+                      (username, password_hash))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False  # 用户名已存在
+    finally:
+        conn.close()
+
+def authenticate_user(username, password):
+    """验证用户凭据"""
+    conn = sqlite3.connect('./web/users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT password_hash FROM users WHERE username = ?', (username,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result and check_password_hash(result[0], password):
+        return True
+    return False
+
+# ---------------- HTTP 路由：登录 / 注册 / 聊天页 ----------------
 
 @app.route("/", methods=["GET", "POST"])
 def login():
-    """简单登录：只要求输入一个昵称，不做密码。
-       你后面想加密码/证书绑定可以再扩展。
-    """
+    """用户登录"""
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        if not username:
-            return render_template("login.html", error="昵称不能为空")
-
-        # 把昵称放到 session 里，后面 WebSocket 用
-        session["username"] = username
-        return redirect(url_for("chat"))
+        password = request.form.get("password", "")
+        
+        if not username or not password:
+            return render_template("login.html", error="用户名和密码不能为空")
+        
+        if authenticate_user(username, password):
+            session["username"] = username
+            return redirect(url_for("chat"))
+        else:
+            return render_template("login.html", error="用户名或密码错误")
 
     # 已登录用户直接跳转到聊天页
     if "username" in session:
         return redirect(url_for("chat"))
 
     return render_template("login.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """用户注册"""
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        
+        if not username or not password:
+            return render_template("register.html", error="用户名和密码不能为空")
+        
+        if password != confirm_password:
+            return render_template("register.html", error="两次输入的密码不一致")
+        
+        if len(password) < 6:
+            return render_template("register.html", error="密码长度至少6位")
+        
+        if register_user(username, password):
+            session["username"] = username
+            return redirect(url_for("chat"))
+        else:
+            return render_template("register.html", error="用户名已存在")
+
+    return render_template("register.html")
 
 
 @app.route("/chat")
