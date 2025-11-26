@@ -1,0 +1,204 @@
+<!-- web/templates/dashboard.html -->
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>聊天仪表盘 - 安全通讯系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  </head>
+  <body>
+    <div class="dashboard">
+      <header class="dashboard-header">
+        <h1>安全通讯系统 - 仪表盘</h1>
+        <div class="user-info">
+          <span>欢迎，{{ username }}！</span>
+          <a class="logout" href="{{ url_for('logout') }}">退出登录</a>
+        </div>
+      </header>
+
+      <main class="dashboard-main">
+        <div class="dashboard-grid">
+          <!-- 我的聊天室部分 -->
+          <section class="dashboard-section">
+            <h2>我的聊天室</h2>
+            <div class="section-content">
+              {% if user_rooms %}
+                <div class="room-list">
+                  {% for room_name in user_rooms %}
+                    <div class="room-item">
+                      <div class="room-info">
+                        <h3>{{ room_name }}</h3>
+                        <p>已加入的聊天室</p>
+                      </div>
+                      <a href="{{ url_for('chat') }}" class="enter-btn" onclick="setCurrentRoom('{{ room_name }}')">进入</a>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="empty-message">您还没有加入任何聊天室</div>
+              {% endif %}
+            </div>
+          </section>
+
+          <!-- 所有聊天室部分 -->
+          <section class="dashboard-section">
+            <h2>所有聊天室</h2>
+            <div class="section-content">
+              {% if all_rooms %}
+                <div class="room-list">
+                  {% for room in all_rooms %}
+                    <div class="room-item">
+                      <div class="room-info">
+                        <h3>{{ room.name }}</h3>
+                        <p>创建者: {{ room.created_by }}</p>
+                        <small>创建时间: {{ room.created_at }}</small>
+                      </div>
+                      {% if room.name in user_rooms %}
+                        <a href="{{ url_for('chat') }}" class="enter-btn" onclick="setCurrentRoom('{{ room.name }}')">进入</a>
+                      {% else %}
+                        <button class="join-btn" onclick="joinRoom('{{ room.name }}')">加入</button>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="empty-message">暂无聊天室</div>
+              {% endif %}
+              <div class="create-room">
+                <button id="create-room-btn">+ 创建新聊天室</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 用户列表部分 -->
+          <section class="dashboard-section">
+            <h2>所有用户</h2>
+            <div class="section-content">
+              {% if other_users %}
+                <div class="user-list">
+                  {% for user in other_users %}
+                    <div class="user-item">
+                      <div class="user-info">
+                        <div style="display: flex; align-items: center;">
+                          <div class="user-avatar">{{ user[0]|upper }}</div>
+                          <div>
+                            <h3>{{ user }}</h3>
+                            <p>在线用户</p>
+                          </div>
+                        </div>
+                      </div>
+                      <a href="{{ url_for('chat') }}" class="chat-btn" onclick="startPrivateChat('{{ user }}')">私聊</a>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="empty-message">暂无其他用户</div>
+              {% endif %}
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- 创建聊天室模态框 -->
+    <div id="create-room-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>创建新聊天室</h3>
+        <form id="create-room-form">
+          <input type="text" id="room-name-input" placeholder="输入聊天室名称" required>
+          <button type="submit">创建</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Socket.IO 客户端 -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      // 与后端建立 Socket.IO 连接
+      const socket = io({
+        transports: ["websocket"]
+      });
+
+      // 设置当前用户
+      const currentUsername = "{{ username }}";
+
+      // 存储当前选择的房间和私聊对象
+      let currentRoom = 'general';
+      let currentPrivateChat = null;
+
+      // 设置当前房间并跳转到聊天页面
+      function setCurrentRoom(roomName) {
+        sessionStorage.setItem('currentRoom', roomName);
+        sessionStorage.removeItem('privateChat');
+      }
+
+      // 开始私人聊天并跳转到聊天页面
+      function startPrivateChat(username) {
+        sessionStorage.setItem('privateChat', username);
+        sessionStorage.removeItem('currentRoom');
+      }
+
+      // 加入聊天室
+      function joinRoom(roomName) {
+        socket.emit('join_room', { room_name: roomName });
+        
+        // 显示加入成功消息
+        alert(`已加入聊天室: ${roomName}`);
+        
+        // 刷新页面以更新状态
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+
+      // 模态框控制
+      document.getElementById('create-room-btn').addEventListener('click', function() {
+        document.getElementById('create-room-modal').style.display = 'flex';
+      });
+
+      document.querySelector('.close').addEventListener('click', function() {
+        document.getElementById('create-room-modal').style.display = 'none';
+      });
+
+      window.addEventListener('click', function(event) {
+        if (event.target == document.getElementById('create-room-modal')) {
+          document.getElementById('create-room-modal').style.display = 'none';
+        }
+      });
+
+      // 创建聊天室表单提交
+      document.getElementById('create-room-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const roomName = document.getElementById('room-name-input').value.trim();
+        if (roomName) {
+          socket.emit('create_room', { room_name: roomName });
+          document.getElementById('room-name-input').value = '';
+          document.getElementById('create-room-modal').style.display = 'none';
+          
+          // 刷新页面以显示新创建的聊天室
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      });
+
+      // Socket.IO 事件处理
+      socket.on("system_message", function (data) {
+        console.log("系统消息:", data.text);
+      });
+
+      socket.on("chat_rooms_list", function (rooms) {
+        console.log("聊天室列表已更新");
+        // 可以在这里更新UI，但为了简单，我们直接刷新页面
+        // window.location.reload();
+      });
+
+      socket.on("user_rooms_list", function (rooms) {
+        console.log("用户聊天室列表已更新");
+        // 可以在这里更新UI，但为了简单，我们直接刷新页面
+        // window.location.reload();
+      });
+    </script>
+  </body>
+</html>

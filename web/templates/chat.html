@@ -4,7 +4,9 @@
   <head>
     <meta charset="utf-8">
     <title>安全聊天室</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body>
     <div class="app">
@@ -14,12 +16,34 @@
           <div class="me">我：{{ username }}</div>
         </div>
         <ul id="user-list"></ul>
-        <a class="logout" href="{{ url_for('logout') }}">退出登录</a>
+        
+        <div class="sidebar-section">
+          <div class="title">私人聊天</div>
+          <ul id="private-chats-list"></ul>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="title">我的聊天室</div>
+          <ul id="user-rooms-list"></ul>
+          <div class="room-actions">
+            <button id="create-room-btn">创建聊天室</button>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="title">所有聊天室</div>
+          <ul id="all-rooms-list"></ul>
+        </div>
+
+        <div class="sidebar-footer">
+          <a class="dashboard-link" href="{{ url_for('dashboard') }}">回到仪表盘</a>
+          <a class="logout" href="{{ url_for('logout') }}">退出登录</a>
+        </div>
       </aside>
 
       <main class="chat">
         <header class="chat-header">
-          <div>简化 QQ 安全通讯系统</div>
+          <div id="current-room">简化 QQ 安全通讯系统 - 当前聊天室: general</div>
         </header>
 
         <section id="messages" class="messages">
@@ -32,11 +56,29 @@
           {% endfor %}
         </section>
 
-        <form id="chat-form" class="chat-input">
-          <input id="msg-input" type="text" placeholder="按 Enter 发送消息..." autocomplete="off">
-          <button type="submit">发送</button>
-        </form>
+        <div class="chat-controls">
+          <div class="private-chat-controls" style="display: none;">
+            <span id="private-chat-with">私人聊天: </span>
+            <button id="exit-private-chat">退出私人聊天</button>
+          </div>
+          <form id="chat-form" class="chat-input">
+            <input id="msg-input" type="text" placeholder="按 Enter 发送消息..." autocomplete="off">
+            <button type="submit">发送</button>
+          </form>
+        </div>
       </main>
+    </div>
+
+    <!-- 创建聊天室模态框 -->
+    <div id="create-room-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>创建新聊天室</h3>
+        <form id="create-room-form">
+          <input type="text" id="room-name-input" placeholder="输入聊天室名称" required>
+          <button type="submit">创建</button>
+        </form>
+      </div>
     </div>
 
     <!-- Socket.IO 客户端 -->
