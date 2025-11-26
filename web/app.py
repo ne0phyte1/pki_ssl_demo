@@ -17,10 +17,15 @@ socketio = SocketIO(app, async_mode="threading")
 
 # 数据库初始化
 def init_db():
-    """初始化SQLite数据库"""
-    conn = sqlite3.connect('./web/users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
+    """初始化SQLite数据库 - 分别创建用户数据库和聊天记录数据库"""
+    # 确保db目录存在
+    os.makedirs('./web/db', exist_ok=True)
+    
+    # 初始化用户数据库
+    users_conn = sqlite3.connect('./web/db/users.db')
+    users_cursor = users_conn.cursor()
+    
+    users_cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -28,8 +33,25 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    conn.commit()
-    conn.close()
+    
+    users_conn.commit()
+    users_conn.close()
+    
+    # 初始化聊天记录数据库
+    chat_conn = sqlite3.connect('./web/db/chat_messages.db')
+    chat_cursor = chat_conn.cursor()
+    
+    chat_cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    chat_conn.commit()
+    chat_conn.close()
 
 # 初始化数据库
 init_db()
@@ -37,14 +59,11 @@ init_db()
 # 记录在线用户：sid -> username
 online_users = {}
 
-# 简单聊天记录（内存，最多保存 100 条）
-chat_history = []  # 每条：{"user": "...", "text": "...", "time": "HH:MM:SS"}
-
 # ---------------- 用户认证函数 ----------------
 
 def register_user(username, password):
     """注册新用户"""
-    conn = sqlite3.connect('./web/users.db')
+    conn = sqlite3.connect('./web/db/users.db')
     cursor = conn.cursor()
     try:
         password_hash = generate_password_hash(password)
@@ -59,7 +78,7 @@ def register_user(username, password):
 
 def authenticate_user(username, password):
     """验证用户凭据"""
-    conn = sqlite3.connect('./web/users.db')
+    conn = sqlite3.connect('./web/db/users.db')
     cursor = conn.cursor()
     cursor.execute('SELECT password_hash FROM users WHERE username = ?', (username,))
     result = cursor.fetchone()
@@ -68,6 +87,43 @@ def authenticate_user(username, password):
     if result and check_password_hash(result[0], password):
         return True
     return False
+
+def save_chat_message(username, message):
+    """保存聊天消息到数据库"""
+    conn = sqlite3.connect('./web/db/chat_messages.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO chat_messages (username, message) VALUES (?, ?)', 
+                  (username, message))
+    conn.commit()
+    conn.close()
+
+def load_chat_history(limit=100):
+    """从数据库加载聊天历史"""
+    conn = sqlite3.connect('./web/db/chat_messages.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT username, message, timestamp 
+        FROM chat_messages 
+        ORDER BY timestamp DESC 
+        LIMIT ?
+    ''', (limit,))
+    messages = cursor.fetchall()
+    conn.close()
+    
+    # 转换为与之前兼容的格式
+    history = []
+    for username, message, timestamp in reversed(messages):
+        # 将timestamp转换为时间字符串
+        if isinstance(timestamp, str):
+            time_str = timestamp.split(' ')[1] if ' ' in timestamp else timestamp
+        else:
+            time_str = timestamp.strftime("%H:%M:%S")
+        history.append({
+            "user": username,
+            "text": message,
+            "time": time_str
+        })
+    return history
 
 # ---------------- HTTP 路由：登录 / 注册 / 聊天页 ----------------
 
@@ -125,10 +181,13 @@ def chat():
     if "username" not in session:
         return redirect(url_for("login"))
 
+    # 从数据库加载聊天历史
+    history = load_chat_history()
+
     return render_template(
         "chat.html",
         username=session["username"],
-        history=chat_history,
+        history=history,
     )
 
 
@@ -187,15 +246,15 @@ def handle_chat_message(data):
     if not text:
         return
 
+    # 保存消息到数据库
+    save_chat_message(username, text)
+
+    # 构建消息对象用于广播
     msg = {
         "user": username,
         "text": text,
         "time": datetime.now().strftime("%H:%M:%S"),
     }
-
-    chat_history.append(msg)
-    if len(chat_history) > 100:
-        chat_history.pop(0)
 
     # 广播聊天消息
     emit("chat_message", msg, broadcast=True)
