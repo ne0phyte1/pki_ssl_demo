@@ -1,114 +1,505 @@
-<!-- web/templates/dashboard.html -->
 <!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <title>聊天仪表盘 - 安全通讯系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+      .dashboard-layout {
+        min-height: 100vh;
+        background: var(--background-gradient);
+        padding: 1rem;
+      }
+      
+      .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1rem 0;
+      }
+      
+      .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+      }
+      
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: white;
+      }
+      
+      .logout-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      
+      .logout-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+      }
+      
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+      
+      .dashboard-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--card-border);
+        padding: 1.75rem;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .dashboard-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(to bottom, var(--primary-color), var(--secondary-color));
+      }
+      
+      .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-xl), 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      }
+      
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      
+      .card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      
+      .card-title::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--primary-color);
+      }
+      
+      .quick-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .action-btn {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 600;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .action-btn:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+      
+      .room-list, .user-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      
+      .room-item, .user-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        transition: var(--transition);
+      }
+      
+      .room-item:hover, .user-item:hover {
+        background: rgba(255, 255, 255, 0.9);
+        transform: translateX(4px);
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .room-info, .user-info-compact {
+        flex: 1;
+      }
+      
+      .room-name, .user-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+      }
+      
+      .room-meta, .user-meta {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        opacity: 0.8;
+      }
+      
+      .enter-btn, .join-btn, .chat-btn {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.75rem;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .enter-btn:hover, .join-btn:hover, .chat-btn:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+      
+      .join-btn {
+        background: var(--success-color);
+      }
+      
+      .join-btn:hover {
+        background: #0da271;
+      }
+      
+      .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        margin-right: 0.75rem;
+        font-size: 0.8rem;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+      
+      .empty-state::before {
+        content: '📝';
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 0.5rem;
+        opacity: 0.5;
+      }
+      
+      .create-room-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      
+      .create-room-btn {
+        width: 100%;
+        background: transparent;
+        border: 2px dashed var(--primary-color);
+        color: var(--primary-color);
+        padding: 1rem;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+      
+      .create-room-btn:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+      
+      /* 模态框样式 */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .modal-content {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--card-border);
+        padding: 2rem;
+        max-width: 400px;
+        width: 90%;
+        position: relative;
+      }
+      
+      .modal-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+      }
+      
+      .modal-title {
+        margin-bottom: 1.5rem;
+        color: var(--text-primary);
+      }
+      
+      .modal-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .modal-input {
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        transition: var(--transition);
+      }
+      
+      .modal-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+      
+      .modal-submit {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      
+      .modal-submit:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+      }
+      
+      @media (max-width: 768px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .dashboard-header {
+          flex-direction: column;
+          gap: 1rem;
+          text-align: center;
+        }
+        
+        .room-item, .user-item {
+          flex-direction: column;
+          gap: 1rem;
+          text-align: center;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="dashboard">
+    <div class="dashboard-layout fade-in">
       <header class="dashboard-header">
-        <h1>安全通讯系统 - 仪表盘</h1>
+        <h1 class="dashboard-title">安全通讯系统</h1>
         <div class="user-info">
           <span>欢迎，{{ username }}！</span>
-          <a class="logout" href="{{ url_for('logout') }}">退出登录</a>
+          <a class="logout-btn" href="{{ url_for('logout') }}">退出登录</a>
         </div>
       </header>
 
-      <main class="dashboard-main">
-        <div class="dashboard-grid">
-          <!-- 我的聊天室部分 -->
-          <section class="dashboard-section">
-            <h2>我的聊天室</h2>
-            <div class="section-content">
-              {% if user_rooms %}
-                <div class="room-list">
-                  {% for room_name in user_rooms %}
-                    <div class="room-item">
-                      <div class="room-info">
-                        <h3>{{ room_name }}</h3>
-                        <p>已加入的聊天室</p>
-                      </div>
-                      <a href="{{ url_for('chat') }}" class="enter-btn" onclick="setCurrentRoom('{{ room_name }}')">进入</a>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% else %}
-                <div class="empty-message">您还没有加入任何聊天室</div>
-              {% endif %}
+      <div class="dashboard-grid">
+        <!-- 我的聊天室卡片 -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h2 class="card-title">我的聊天室</h2>
+            <div class="quick-actions">
+              <button class="action-btn" id="join-by-token-btn">通过Token加入</button>
+              <button class="action-btn" id="manage-rooms-btn">管理聊天室</button>
             </div>
-          </section>
-
-          <!-- 所有聊天室部分 -->
-          <section class="dashboard-section">
-            <h2>所有聊天室</h2>
-            <div class="section-content">
-              {% if all_rooms %}
-                <div class="room-list">
-                  {% for room in all_rooms %}
-                    <div class="room-item">
-                      <div class="room-info">
-                        <h3>{{ room.name }}</h3>
-                        <p>创建者: {{ room.created_by }}</p>
-                        <small>创建时间: {{ room.created_at }}</small>
-                      </div>
-                      {% if room.name in user_rooms %}
-                        <a href="{{ url_for('chat') }}" class="enter-btn" onclick="setCurrentRoom('{{ room.name }}')">进入</a>
-                      {% else %}
-                        <button class="join-btn" onclick="joinRoom('{{ room.name }}')">加入</button>
-                      {% endif %}
-                    </div>
-                  {% endfor %}
+          </div>
+          
+          <div class="room-list">
+            {% if user_rooms %}
+              {% for room_name in user_rooms %}
+                <div class="room-item">
+                  <div class="room-info">
+                    <div class="room-name">{{ room_name }}</div>
+                    <div class="room-meta">已加入的聊天室</div>
+                  </div>
+                  <a href="{{ url_for('chat') }}" class="enter-btn" onclick="setCurrentRoom('{{ room_name }}')">进入</a>
                 </div>
-              {% else %}
-                <div class="empty-message">暂无聊天室</div>
-              {% endif %}
-              <div class="create-room">
-                <button id="create-room-btn">+ 创建新聊天室</button>
-              </div>
-            </div>
-          </section>
-
-          <!-- 用户列表部分 -->
-          <section class="dashboard-section">
-            <h2>所有用户</h2>
-            <div class="section-content">
-              {% if other_users %}
-                <div class="user-list">
-                  {% for user in other_users %}
-                    <div class="user-item">
-                      <div class="user-info">
-                        <div style="display: flex; align-items: center;">
-                          <div class="user-avatar">{{ user[0]|upper }}</div>
-                          <div>
-                            <h3>{{ user }}</h3>
-                            <p>在线用户</p>
-                          </div>
-                        </div>
-                      </div>
-                      <a href="{{ url_for('chat') }}" class="chat-btn" onclick="startPrivateChat('{{ user }}')">私聊</a>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% else %}
-                <div class="empty-message">暂无其他用户</div>
-              {% endif %}
-            </div>
-          </section>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">您还没有加入任何聊天室</div>
+            {% endif %}
+          </div>
+          
+          <div class="create-room-section">
+            <button class="create-room-btn" id="create-room-btn">+ 创建聊天室</button>
+          </div>
         </div>
-      </main>
+
+        <!-- 公共聊天室卡片 -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h2 class="card-title">公共聊天室</h2>
+          </div>
+          
+          <div class="room-list">
+            {% if public_rooms %}
+              {% for room in public_rooms %}
+                <div class="room-item">
+                  <div class="room-info">
+                    <div class="room-name">{{ room.name }}</div>
+                    <div class="room-meta">
+                      创建者: {{ room.created_by }}
+                      <br>
+                      <small>创建时间: {{ room.created_at }}</small>
+                    </div>
+                  </div>
+                  {% if room.name in user_rooms %}
+                    <a href="{{ url_for('chat') }}" class="enter-btn" onclick="setCurrentRoom('{{ room.name }}')">进入</a>
+                  {% else %}
+                    <button class="join-btn" onclick="joinRoom('{{ room.name }}')">加入</button>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">暂无公共聊天室</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- 用户列表卡片 -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h2 class="card-title">所有用户</h2>
+          </div>
+          
+          <div class="user-list">
+            {% if other_users %}
+              {% for user in other_users %}
+                <div class="user-item">
+                  <div class="user-info-compact" style="display: flex; align-items: center;">
+                    <div class="user-avatar">{{ user[0]|upper }}</div>
+                    <div>
+                      <div class="user-name">{{ user }}</div>
+                      <div class="user-meta">在线用户</div>
+                    </div>
+                  </div>
+                  <a href="{{ url_for('chat') }}" class="chat-btn" onclick="startPrivateChat('{{ user }}')">私聊</a>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">暂无其他用户</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 创建聊天室模态框 -->
-    <div id="create-room-modal" class="modal" style="display: none;">
+    <!-- 模态框 -->
+    <div id="create-room-modal" class="modal">
       <div class="modal-content">
-        <span class="close">&times;</span>
-        <h3>创建新聊天室</h3>
-        <form id="create-room-form">
-          <input type="text" id="room-name-input" placeholder="输入聊天室名称" required>
-          <button type="submit">创建</button>
+        <button class="modal-close">&times;</button>
+        <h3 class="modal-title">创建新聊天室</h3>
+        <form class="modal-form" id="create-room-form">
+          <input type="text" class="modal-input" id="room-name-input" placeholder="输入聊天室名称" required>
+          <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+              <input type="radio" name="room-type" value="public" checked>
+              公共聊天室
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+              <input type="radio" name="room-type" value="private">
+              私有聊天室
+            </label>
+          </div>
+          <button type="submit" class="modal-submit">创建</button>
         </form>
+      </div>
+    </div>
+
+    <div id="join-by-token-modal" class="modal">
+      <div class="modal-content">
+        <button class="modal-close">&times;</button>
+        <h3 class="modal-title">通过Token加入聊天室</h3>
+        <form class="modal-form" id="join-by-token-form">
+          <input type="text" class="modal-input" id="token-input" placeholder="输入聊天室Token" required>
+          <button type="submit" class="modal-submit">加入</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="manage-rooms-modal" class="modal">
+      <div class="modal-content">
+        <button class="modal-close">&times;</button>
+        <h3 class="modal-title">管理我的聊天室</h3>
+        
+        <div class="create-room-section">
+          <h4>我创建的聊天室</h4>
+          <div id="my-created-rooms-list" class="room-list">
+            <!-- 动态加载的聊天室列表 -->
+          </div>
+        </div>
       </div>
     </div>
 
@@ -143,8 +534,8 @@
       function joinRoom(roomName) {
         socket.emit('join_room', { room_name: roomName });
         
-        // 显示加入成功消息
-        alert(`已加入聊天室: ${roomName}`);
+        // 记录加入成功消息（不再显示弹窗）
+        console.log(`已加入聊天室: ${roomName}`);
         
         // 刷新页面以更新状态
         setTimeout(() => {
@@ -153,51 +544,148 @@
       }
 
       // 模态框控制
-      document.getElementById('create-room-btn').addEventListener('click', function() {
-        document.getElementById('create-room-modal').style.display = 'flex';
-      });
+      function setupModal(modalId, openBtnId) {
+        const modal = document.getElementById(modalId);
+        const openBtn = document.getElementById(openBtnId);
+        const closeBtn = modal.querySelector('.modal-close');
 
-      document.querySelector('.close').addEventListener('click', function() {
-        document.getElementById('create-room-modal').style.display = 'none';
-      });
+        openBtn.addEventListener('click', function() {
+          modal.style.display = 'flex';
+          // 如果是管理聊天室模态框，加载用户创建的聊天室
+          if (modalId === 'manage-rooms-modal') {
+            socket.emit('get_user_created_rooms');
+          }
+        });
 
-      window.addEventListener('click', function(event) {
-        if (event.target == document.getElementById('create-room-modal')) {
-          document.getElementById('create-room-modal').style.display = 'none';
-        }
-      });
+        closeBtn.addEventListener('click', function() {
+          modal.style.display = 'none';
+        });
+
+        window.addEventListener('click', function(event) {
+          if (event.target === modal) {
+            modal.style.display = 'none';
+          }
+        });
+      }
+
+      // 初始化模态框
+      setupModal('create-room-modal', 'create-room-btn');
+      setupModal('join-by-token-modal', 'join-by-token-btn');
+      setupModal('manage-rooms-modal', 'manage-rooms-btn');
 
       // 创建聊天室表单提交
       document.getElementById('create-room-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const roomName = document.getElementById('room-name-input').value.trim();
+        const roomType = document.querySelector('#create-room-form input[name="room-type"]:checked').value;
+        
         if (roomName) {
-          socket.emit('create_room', { room_name: roomName });
+          socket.emit('create_room_with_type', { 
+            room_name: roomName, 
+            room_type: roomType 
+          });
           document.getElementById('room-name-input').value = '';
           document.getElementById('create-room-modal').style.display = 'none';
-          
-          // 刷新页面以显示新创建的聊天室
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
         }
       });
+
+      // 通过Token加入聊天室表单提交
+      document.getElementById('join-by-token-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const token = document.getElementById('token-input').value.trim();
+        if (token) {
+          socket.emit('join_room_by_token', { token: token });
+          document.getElementById('token-input').value = '';
+          document.getElementById('join-by-token-modal').style.display = 'none';
+        }
+      });
+
 
       // Socket.IO 事件处理
       socket.on("system_message", function (data) {
         console.log("系统消息:", data.text);
+        // 不再显示弹窗，只在控制台记录
       });
 
       socket.on("chat_rooms_list", function (rooms) {
         console.log("聊天室列表已更新");
-        // 可以在这里更新UI，但为了简单，我们直接刷新页面
-        // window.location.reload();
       });
 
       socket.on("user_rooms_list", function (rooms) {
         console.log("用户聊天室列表已更新");
-        // 可以在这里更新UI，但为了简单，我们直接刷新页面
-        // window.location.reload();
+      });
+
+      // 处理用户创建的聊天室列表
+      socket.on("user_created_rooms", function (data) {
+        const roomsList = document.getElementById('my-created-rooms-list');
+        roomsList.innerHTML = '';
+
+        if (data.rooms && data.rooms.length > 0) {
+          data.rooms.forEach(room => {
+            const roomItem = document.createElement('div');
+            roomItem.className = 'room-item';
+            roomItem.innerHTML = `
+              <div class="room-info">
+                <div class="room-name">${room.name}</div>
+                <div class="room-meta">
+                  类型: ${room.room_type === 'private' ? '私有' : '公共'} 
+                  ${room.room_type === 'private' ? `(Token: ${room.token})` : ''}
+                </div>
+              </div>
+              <button class="action-btn" onclick="deleteRoom('${room.name}')">解散</button>
+            `;
+            roomsList.appendChild(roomItem);
+          });
+        } else {
+          roomsList.innerHTML = '<div class="empty-state">您还没有创建任何聊天室</div>';
+        }
+      });
+
+      // 解散聊天室函数
+      function deleteRoom(roomName) {
+        // 直接解散聊天室，不再显示确认弹窗
+        socket.emit('delete_chat_room', { room_name: roomName });
+      }
+
+      // 处理通过Token加入聊天室的结果
+      socket.on("join_by_token_result", function (data) {
+        if (data.success) {
+          console.log(`成功加入聊天室: ${data.room_name}`);
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          console.log(data.error || '加入聊天室失败');
+        }
+      });
+
+      // 处理创建聊天室的结果
+      socket.on("room_created", function (data) {
+        if (data.success) {
+          if (data.room_type === 'private') {
+            console.log(`私有聊天室创建成功！Token: ${data.token}`);
+          } else {
+            console.log('公共聊天室创建成功！');
+          }
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          console.log(data.error || '创建聊天室失败');
+        }
+      });
+
+      // 处理解散聊天室的结果
+      socket.on("room_deleted", function (data) {
+        if (data.success) {
+          console.log('聊天室已成功解散');
+          socket.emit('get_user_created_rooms');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          console.log(data.error || '解散聊天室失败');
+        }
       });
     </script>
   </body>

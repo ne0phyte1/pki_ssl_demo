@@ -1,4 +1,3 @@
-<!-- web/templates/login.html -->
 <!doctype html>
 <html lang="zh-CN">
   <head>
@@ -7,87 +6,209 @@
     <title>安全聊天登录</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <style>
-      .login-container {
+      .auth-layout {
         min-height: 100vh;
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr;
         align-items: center;
         justify-content: center;
         padding: 1rem;
+        background: var(--background-gradient);
       }
       
-      .login-card {
+      .auth-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+      }
+      
+      .auth-card {
         width: 100%;
-        max-width: 400px;
-        text-align: center;
+        max-width: 420px;
+        padding: 2.5rem;
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--card-border);
+        position: relative;
+        overflow: hidden;
       }
       
-      .login-title {
-        font-size: 1.75rem;
+      .auth-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      }
+      
+      .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      
+      .auth-title {
+        font-size: 2rem;
         font-weight: 700;
-        margin-bottom: 1.5rem;
-        color: var(--text-primary);
+        margin-bottom: 0.5rem;
         background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
       }
       
-      .login-form {
+      .auth-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+      }
+      
+      .auth-form {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
+      }
+      
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .form-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+      }
+      
+      .form-input {
+        padding: 0.875rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        transition: var(--transition);
+        background: white;
+      }
+      
+      .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
       }
       
       .form-actions {
         margin-top: 0.5rem;
       }
       
-      .register-prompt {
+      .btn-primary {
+        width: 100%;
+        padding: 0.875rem 1.5rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      
+      .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+      }
+      
+      .auth-footer {
+        text-align: center;
         margin-top: 1.5rem;
         font-size: 0.875rem;
         color: var(--text-secondary);
       }
       
-      .register-prompt a {
+      .auth-link {
         color: var(--primary-color);
         text-decoration: none;
         font-weight: 600;
         transition: var(--transition);
       }
       
-      .register-prompt a:hover {
+      .auth-link:hover {
         color: var(--primary-hover);
         text-decoration: underline;
+      }
+      
+      .error-message {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--error-color);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        font-size: 0.875rem;
+        text-align: center;
+      }
+      
+      @media (max-width: 480px) {
+        .auth-card {
+          padding: 2rem 1.5rem;
+        }
+        
+        .auth-title {
+          font-size: 1.75rem;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="login-container fade-in">
-      <div class="card login-card">
-        <h1 class="login-title">安全聊天室</h1>
-        <form method="post" class="login-form">
-          <div class="form-group">
-            <label for="username" class="form-label">用户名</label>
-            <input id="username" name="username" type="text" class="form-input" autocomplete="username" placeholder="请输入用户名" required>
+    <div class="auth-layout fade-in">
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1 class="auth-title">安全聊天室</h1>
+            <p class="auth-subtitle">安全加密的实时通讯平台</p>
           </div>
           
-          <div class="form-group">
-            <label for="password" class="form-label">密码</label>
-            <input id="password" name="password" type="password" class="form-input" autocomplete="current-password" placeholder="请输入密码" required>
-          </div>
+          <form method="post" class="auth-form">
+            <div class="form-group">
+              <label for="username" class="form-label">用户名</label>
+              <input 
+                id="username" 
+                name="username" 
+                type="text" 
+                class="form-input" 
+                autocomplete="username" 
+                placeholder="请输入用户名" 
+                required
+              >
+            </div>
+            
+            <div class="form-group">
+              <label for="password" class="form-label">密码</label>
+              <input 
+                id="password" 
+                name="password" 
+                type="password" 
+                class="form-input" 
+                autocomplete="current-password" 
+                placeholder="请输入密码" 
+                required
+              >
+            </div>
+            
+            {% if error %}
+              <div class="error-message">{{ error }}</div>
+            {% endif %}
+            
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">登录</button>
+            </div>
+          </form>
           
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">登录</button>
+          <div class="auth-footer">
+            没有账号？<a href="{{ url_for('register') }}" class="auth-link">立即注册</a>
           </div>
-          
-          {% if error %}
-            <div class="text-error text-center">{{ error }}</div>
-          {% endif %}
-          
-          <div class="register-prompt text-center">
-            没有账号？<a href="{{ url_for('register') }}">立即注册</a>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   </body>

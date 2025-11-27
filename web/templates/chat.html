@@ -1,88 +1,900 @@
-<!-- web/templates/chat.html -->
 <!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <title>安全聊天室</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      .chat-layout {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        background: var(--background-gradient);
+      }
+      
+      /* 侧边栏样式 */
+      .sidebar {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border-right: 1px solid var(--card-border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      .sidebar::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      }
+      
+      .sidebar-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.5);
+      }
+      
+      .sidebar-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+      }
+      
+      .current-user {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+      
+      .sidebar-section {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      }
+      
+      .section-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      
+      .user-list, .room-list, .private-chats-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-height: 200px;
+        overflow-y: hidden;
+      }
+      
+      .user-item, .room-item, .private-chat-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        cursor: pointer;
+      }
+      
+      .user-item:hover, .room-item:hover, .private-chat-item:hover {
+        background: rgba(99, 102, 241, 0.1);
+      }
+      
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-right: 0.75rem;
+        font-size: 0.75rem;
+      }
+      
+      .user-name, .room-name, .private-chat-name {
+        font-size: 0.875rem;
+        color: var(--text-primary);
+      }
+      
+      .user-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--success-color);
+        margin-left: auto;
+      }
+      
+      .sidebar-footer {
+        margin-top: auto;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .sidebar-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        border-radius: 6px;
+        text-decoration: none;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        transition: var(--transition);
+      }
+      
+      .sidebar-link:hover {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary-color);
+      }
+      
+      /* 主聊天区域样式 */
+      .chat-main {
+        display: flex;
+        flex-direction: column;
+        background: white;
+      }
+      
+      .chat-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .current-room-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      
+      .room-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+      }
+      
+      .room-details h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+      }
+      
+      .room-details p {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: 0;
+      }
+      
+      .chat-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .action-btn {
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      
+      .action-btn:hover {
+        background: #f9fafb;
+        border-color: var(--primary-color);
+      }
+      
+      /* 消息区域样式 - 可滑动内框 */
+      .messages-container {
+        flex: 1;
+        overflow: hidden;
+        background: #f9fafb;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .chat-inner-frame {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow-y: auto;
+        padding: 1rem;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+      }
+      
+      .chat-inner-frame::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .chat-inner-frame::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      .chat-inner-frame::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.3);
+        border-radius: 3px;
+      }
+      
+      .chat-inner-frame::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.5);
+      }
+      
+      .messages {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        min-height: 100%;
+      }
+      
+      .message {
+        display: flex;
+        gap: 0.75rem;
+        animation: fadeIn 0.3s ease-out;
+        width: 100%;
+      }
+      
+      .message-other {
+        justify-content: flex-start;
+      }
+      
+      .message-own {
+        justify-content: flex-end;
+      }
+      
+      .message-inner {
+        display: flex;
+        gap: 0.75rem;
+        max-width: 70%;
+      }
+      
+      .message-own .message-inner {
+        flex-direction: row-reverse;
+      }
+      
+      .message-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+      }
+      
+      .message-content {
+        background: white;
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid #e5e7eb;
+        max-width: 100%;
+      }
+      
+      .message-own .message-content {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: rgba(99, 102, 241, 0.3);
+      }
+      
+      .message-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+      }
+      
+      .message-username {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+      }
+      
+      .message-time {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+      
+      .message-text {
+        color: var(--text-primary);
+        line-height: 1.4;
+        word-wrap: break-word;
+      }
+      
+      .system-message {
+        text-align: center;
+        padding: 0.5rem;
+        margin: 0.5rem 0;
+      }
+      
+      .system-text {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--primary-color);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        display: inline-block;
+      }
+      
+      /* 输入区域样式 */
+      .chat-input-area {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        background: white;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+      }
+      
+      .private-chat-indicator {
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .private-chat-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .private-chat-label {
+        font-weight: 600;
+        color: var(--primary-color);
+        font-size: 0.875rem;
+      }
+      
+      .private-chat-partner {
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      
+      .exit-private-btn {
+        background: transparent;
+        border: 1px solid var(--error-color);
+        color: var(--error-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      
+      .exit-private-btn:hover {
+        background: var(--error-color);
+        color: white;
+      }
+      
+      .message-form {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-end;
+      }
+      
+      .message-input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 24px;
+        font-size: 0.875rem;
+        transition: var(--transition);
+        resize: none;
+        min-height: 44px;
+        max-height: 120px;
+        box-sizing: border-box;
+      }
+      
+      .message-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+      
+      .send-btn {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .send-btn:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+      }
+      
+      .send-btn:disabled {
+        background: var(--text-muted);
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      /* 响应式设计 */
+      @media (max-width: 768px) {
+        .chat-layout {
+          grid-template-columns: 1fr;
+        }
+        
+        .sidebar {
+          display: none;
+        }
+        
+        .mobile-menu-btn {
+          display: block;
+        }
+        
+        .messages {
+          max-width: 100%;
+        }
+      }
+      
+      /* 动画 */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="app">
+    <div class="chat-layout">
+      <!-- 侧边栏 -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <div class="title">在线用户</div>
-          <div class="me">我：{{ username }}</div>
+          <div class="sidebar-title">安全聊天室</div>
+          <div class="current-user">我：{{ username }}</div>
         </div>
-        <ul id="user-list"></ul>
         
         <div class="sidebar-section">
-          <div class="title">私人聊天</div>
-          <ul id="private-chats-list"></ul>
+          <div class="section-title">在线用户</div>
+          <ul id="user-list" class="user-list"></ul>
         </div>
-
+        
         <div class="sidebar-section">
-          <div class="title">我的聊天室</div>
-          <ul id="user-rooms-list"></ul>
-          <div class="room-actions">
-            <button id="create-room-btn">创建聊天室</button>
-          </div>
+          <div class="section-title">私人聊天</div>
+          <ul id="private-chats-list" class="private-chats-list"></ul>
         </div>
-
+        
         <div class="sidebar-section">
-          <div class="title">所有聊天室</div>
-          <ul id="all-rooms-list"></ul>
+          <div class="section-title">我的聊天室</div>
+          <ul id="user-rooms-list" class="room-list"></ul>
         </div>
-
+        
+        <div class="sidebar-section">
+          <div class="section-title">所有聊天室</div>
+          <ul id="all-rooms-list" class="room-list"></ul>
+        </div>
+        
         <div class="sidebar-footer">
-          <a class="dashboard-link" href="{{ url_for('dashboard') }}">回到仪表盘</a>
-          <a class="logout" href="{{ url_for('logout') }}">退出登录</a>
+          <a href="{{ url_for('dashboard') }}" class="sidebar-link">回到仪表盘</a>
+          <a href="{{ url_for('logout') }}" class="sidebar-link">退出登录</a>
         </div>
       </aside>
 
-      <main class="chat">
+      <!-- 主聊天区域 -->
+      <main class="chat-main">
         <header class="chat-header">
-          <div id="current-room">简化 QQ 安全通讯系统 - 当前聊天室: general</div>
+          <div class="current-room-info">
+            <div class="room-icon" id="current-room-icon">G</div>
+            <div class="room-details">
+              <h2 id="current-room-title">简化 QQ 安全通讯系统</h2>
+              <p id="current-room-subtitle">当前聊天室: general</p>
+            </div>
+          </div>
+          <div class="chat-actions">
+            <button class="action-btn" onclick="switchRoom('general')">默认聊天室</button>
+            <button class="action-btn" onclick="window.location.href='{{ url_for('dashboard') }}'">管理聊天室</button>
+          </div>
         </header>
 
-        <section id="messages" class="messages">
-          {% for msg in history %}
-            <div class="msg">
-              <span class="time">[{{ msg.time }}]</span>
-              <span class="user">{{ msg.user }}：</span>
-              <span class="text">{{ msg.text }}</span>
+        <section class="messages-container">
+          <div class="chat-inner-frame" id="chat-inner-frame">
+            <div class="messages" id="messages">
+              {% for msg in history %}
+                <div class="message {% if msg.user == username %}message-own{% else %}message-other{% endif %}">
+                  <div class="message-inner">
+                    <div class="message-avatar">{{ msg.user[0]|upper }}</div>
+                    <div class="message-content">
+                      <div class="message-header">
+                        <span class="message-username">{{ msg.user }}</span>
+                        <span class="message-time">{{ msg.time }}</span>
+                      </div>
+                      <div class="message-text">{{ msg.text }}</div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
             </div>
-          {% endfor %}
+          </div>
         </section>
 
-        <div class="chat-controls">
-          <div class="private-chat-controls" style="display: none;">
-            <span id="private-chat-with">私人聊天: </span>
-            <button id="exit-private-chat">退出私人聊天</button>
+        <div class="chat-input-area">
+          <div id="private-chat-indicator" class="private-chat-indicator" style="display: none;">
+            <div class="private-chat-info">
+              <span class="private-chat-label">私人聊天:</span>
+              <span class="private-chat-partner" id="private-chat-partner"></span>
+            </div>
+            <button class="exit-private-btn" id="exit-private-chat">退出私人聊天</button>
           </div>
-          <form id="chat-form" class="chat-input">
-            <input id="msg-input" type="text" placeholder="按 Enter 发送消息..." autocomplete="off">
-            <button type="submit">发送</button>
+          
+          <form id="chat-form" class="message-form">
+            <textarea 
+              id="msg-input" 
+              class="message-input" 
+              placeholder="输入消息..." 
+              rows="1"
+              autocomplete="off"
+            ></textarea>
+            <button type="submit" class="send-btn" id="send-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
+            </button>
           </form>
         </div>
       </main>
     </div>
 
-    <!-- 创建聊天室模态框 -->
-    <div id="create-room-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <span class="close">&times;</span>
-        <h3>创建新聊天室</h3>
-        <form id="create-room-form">
-          <input type="text" id="room-name-input" placeholder="输入聊天室名称" required>
-          <button type="submit">创建</button>
-        </form>
-      </div>
-    </div>
-
     <!-- Socket.IO 客户端 -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+    <script>
+      // 与后端建立 Socket.IO 连接
+      const socket = io({
+        transports: ["websocket"]
+      });
+
+      // 获取DOM元素
+      const messagesEl = document.getElementById("messages");
+      const msgInput = document.getElementById("msg-input");
+      const chatForm = document.getElementById("chat-form");
+      const userListEl = document.getElementById("user-list");
+      const privateChatsListEl = document.getElementById("private-chats-list");
+      const userRoomsListEl = document.getElementById("user-rooms-list");
+      const allRoomsListEl = document.getElementById("all-rooms-list");
+      const privateChatIndicator = document.getElementById("private-chat-indicator");
+      const privateChatPartner = document.getElementById("private-chat-partner");
+      const exitPrivateChatBtn = document.getElementById("exit-private-chat");
+      const currentRoomIcon = document.getElementById("current-room-icon");
+      const currentRoomTitle = document.getElementById("current-room-title");
+      const currentRoomSubtitle = document.getElementById("current-room-subtitle");
+      const chatInnerFrame = document.getElementById("chat-inner-frame");
+
+      // 从sessionStorage获取当前房间和私聊信息
+      let currentRoom = sessionStorage.getItem('currentRoom') || 'general';
+      let currentPrivateChat = sessionStorage.getItem('privateChat') || null;
+
+      // 初始化页面状态
+      updateRoomDisplay();
+      updatePrivateChatIndicator();
+
+      // 自动滚动到消息底部
+      function scrollToBottom() {
+        chatInnerFrame.scrollTo({
+          top: chatInnerFrame.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+
+      // 更新房间显示
+      function updateRoomDisplay() {
+        if (currentPrivateChat) {
+          currentRoomIcon.textContent = currentPrivateChat[0].toUpperCase();
+          currentRoomTitle.textContent = `私人聊天 - ${currentPrivateChat}`;
+          currentRoomSubtitle.textContent = "端到端加密对话";
+        } else {
+          currentRoomIcon.textContent = currentRoom[0].toUpperCase();
+          currentRoomTitle.textContent = "安全聊天室";
+          currentRoomSubtitle.textContent = `当前聊天室: ${currentRoom}`;
+        }
+      }
+
+      // 更新私人聊天指示器
+      function updatePrivateChatIndicator() {
+        if (currentPrivateChat) {
+          privateChatIndicator.style.display = 'flex';
+          privateChatPartner.textContent = currentPrivateChat;
+        } else {
+          privateChatIndicator.style.display = 'none';
+        }
+      }
+
+      // 添加消息到聊天界面
+      function addMessage(msg, isSystem = false) {
+        if (isSystem) {
+          const systemMsg = document.createElement("div");
+          systemMsg.className = "system-message";
+          systemMsg.innerHTML = `<div class="system-text">${msg.text}</div>`;
+          messagesEl.appendChild(systemMsg);
+        } else {
+          const messageDiv = document.createElement("div");
+          const isOwnMessage = msg.user === "{{ username }}";
+          
+          // 根据消息发送者决定样式类
+          messageDiv.className = `message ${isOwnMessage ? 'message-own' : 'message-other'}`;
+          
+          messageDiv.innerHTML = `
+            <div class="message-inner">
+              <div class="message-avatar">${msg.user[0].toUpperCase()}</div>
+              <div class="message-content">
+                <div class="message-header">
+                  <span class="message-username">${msg.user}</span>
+                  <span class="message-time">${msg.time}</span>
+                </div>
+                <div class="message-text">${msg.text}</div>
+              </div>
+            </div>
+          `;
+          
+          messagesEl.appendChild(messageDiv);
+        }
+        
+        scrollToBottom();
+      }
+
+      // 发送消息
+      function sendMessage() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+
+        if (currentPrivateChat) {
+          // 发送私人消息
+          socket.emit("private_message", {
+            to_user: currentPrivateChat,
+            text: text
+          });
+        } else {
+          // 发送聊天室消息
+          socket.emit("chat_message", {
+            text: text,
+            room: currentRoom
+          });
+        }
+
+        msgInput.value = "";
+        adjustTextareaHeight();
+      }
+
+      // 调整文本区域高度
+      function adjustTextareaHeight() {
+        msgInput.style.height = 'auto';
+        msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+      }
+
+      // 切换聊天室
+      function switchRoom(roomName) {
+        socket.emit('switch_room', { room_name: roomName });
+        currentRoom = roomName;
+        currentPrivateChat = null;
+        sessionStorage.setItem('currentRoom', roomName);
+        sessionStorage.removeItem('privateChat');
+        updateRoomDisplay();
+        updatePrivateChatIndicator();
+        messagesEl.innerHTML = ''; // 清空消息显示
+      }
+
+      // 开始私人聊天
+      function startPrivateChat(username) {
+        currentPrivateChat = username;
+        currentRoom = 'general'; // 重置为默认房间，但显示私人聊天
+        sessionStorage.setItem('privateChat', username);
+        sessionStorage.removeItem('currentRoom');
+        updateRoomDisplay();
+        updatePrivateChatIndicator();
+        messagesEl.innerHTML = ''; // 清空消息显示
+        
+        // 加载私人消息历史
+        socket.emit('load_private_history', { other_user: username });
+      }
+
+      // 退出私人聊天
+      function exitPrivateChat() {
+        currentPrivateChat = null;
+        sessionStorage.removeItem('privateChat');
+        updateRoomDisplay();
+        updatePrivateChatIndicator();
+        messagesEl.innerHTML = ''; // 清空消息显示
+        
+        // 加载当前房间的历史
+        socket.emit('switch_room', { room_name: currentRoom });
+      }
+
+      // 事件监听器
+      chatForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        sendMessage();
+      });
+
+      msgInput.addEventListener("input", adjustTextareaHeight);
+
+      msgInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      exitPrivateChatBtn.addEventListener("click", exitPrivateChat);
+
+      // Socket.IO 事件处理
+      socket.on("connect", function () {
+        console.log("已连接到服务器");
+        
+        // 如果当前在私人聊天模式，加载历史
+        if (currentPrivateChat) {
+          socket.emit('load_private_history', { other_user: currentPrivateChat });
+        }
+      });
+
+      socket.on("chat_message", function (msg) {
+        // 只在当前房间显示消息（非私人聊天模式）
+        if (!currentPrivateChat && msg.room === currentRoom) {
+          addMessage(msg);
+        }
+      });
+
+      socket.on("private_message", function (msg) {
+        console.log("收到私人消息:", msg);
+        // 如果当前正在与发送者或接收者进行私人聊天，显示消息
+        if (currentPrivateChat) {
+          // 检查消息是否与当前私人聊天相关
+          const isRelevantMessage = 
+            (msg.from_user === currentPrivateChat && msg.to_user === "{{ username }}") ||
+            (msg.to_user === currentPrivateChat && msg.from_user === "{{ username }}");
+          
+          if (isRelevantMessage) {
+            // 确保消息对象有正确的用户字段
+            const displayMsg = {
+              user: msg.from_user,
+              text: msg.text,
+              time: msg.time
+            };
+            addMessage(displayMsg);
+          }
+        }
+      });
+
+      socket.on("system_message", function (data) {
+        addMessage(data, true);
+      });
+
+      socket.on("online_users", function (users) {
+        userListEl.innerHTML = "";
+        users.forEach(function (username) {
+          if (username !== "{{ username }}") {
+            const userItem = document.createElement("li");
+            userItem.className = "user-item";
+            userItem.innerHTML = `
+              <div class="user-avatar">${username[0].toUpperCase()}</div>
+              <div class="user-name">${username}</div>
+              <div class="user-status"></div>
+            `;
+            userItem.addEventListener("click", function() {
+              startPrivateChat(username);
+            });
+            userListEl.appendChild(userItem);
+          }
+        });
+      });
+
+      socket.on("private_chats_list", function (chats) {
+        privateChatsListEl.innerHTML = "";
+        chats.forEach(function (chat) {
+          const chatItem = document.createElement("li");
+          chatItem.className = "private-chat-item";
+          chatItem.innerHTML = `
+            <div class="user-avatar">${chat.partner[0].toUpperCase()}</div>
+            <div class="private-chat-name">${chat.partner}</div>
+          `;
+          chatItem.addEventListener("click", function() {
+            startPrivateChat(chat.partner);
+          });
+          privateChatsListEl.appendChild(chatItem);
+        });
+      });
+
+      socket.on("user_rooms_list", function (rooms) {
+        userRoomsListEl.innerHTML = "";
+        rooms.forEach(function (roomName) {
+          const roomItem = document.createElement("li");
+          roomItem.className = "room-item";
+          roomItem.innerHTML = `
+            <div class="user-avatar">${roomName[0].toUpperCase()}</div>
+            <div class="room-name">${roomName}</div>
+          `;
+          roomItem.addEventListener("click", function() {
+            switchRoom(roomName);
+          });
+          userRoomsListEl.appendChild(roomItem);
+        });
+      });
+
+      socket.on("all_rooms_list", function (rooms) {
+        allRoomsListEl.innerHTML = "";
+        rooms.forEach(function (room) {
+          const roomItem = document.createElement("li");
+          roomItem.className = "room-item";
+          roomItem.innerHTML = `
+            <div class="user-avatar">${room.name[0].toUpperCase()}</div>
+            <div class="room-name">${room.name}</div>
+          `;
+          roomItem.addEventListener("click", function() {
+            switchRoom(room.name);
+          });
+          allRoomsListEl.appendChild(roomItem);
+        });
+      });
+
+      socket.on("room_history", function (data) {
+        // 只在非私人聊天模式且房间匹配时显示历史
+        if (!currentPrivateChat && data.room === currentRoom) {
+          messagesEl.innerHTML = "";
+          data.history.forEach(function (msg) {
+            addMessage(msg);
+          });
+        }
+      });
+
+      socket.on("private_history", function (data) {
+        if (currentPrivateChat === data.other_user) {
+          messagesEl.innerHTML = "";
+          data.history.forEach(function (msg) {
+            addMessage(msg);
+          });
+        }
+      });
+
+      // 初始化文本区域高度
+      adjustTextareaHeight();
+      
+      // 初始滚动到底部
+      scrollToBottom();
+    </script>
   </body>
 </html>

@@ -60,6 +60,35 @@ body {
   padding: 24px;
 }
 
+/* 操作按钮区域 */
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  justify-content: center;
+}
+
+.action-btn {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  color: #667eea;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -311,21 +340,144 @@ body {
   }
 }
 
+/* 新模态框样式 */
+#join-by-token-form, #create-room-with-type-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#token-input, #new-room-name-input {
+  padding: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+
+#token-input:focus, #new-room-name-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+#join-by-token-form button, #create-room-with-type-form button {
+  padding: 12px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+#join-by-token-form button:hover, #create-room-with-type-form button:hover {
+  background: #5a6fd8;
+}
+
+/* 房间类型选择样式 */
+.room-type-selection {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.room-type-selection label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.room-type-selection input[type="radio"] {
+  accent-color: #667eea;
+}
+
+/* 管理聊天室模态框样式 */
+.create-room-section, .my-created-rooms-section {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.create-room-section:last-child, .my-created-rooms-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.create-room-section h4, .my-created-rooms-section h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 我创建的聊天室列表样式 */
+#my-created-rooms-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.created-room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+  margin-bottom: 8px;
+}
+
+.created-room-info h5 {
+  margin: 0 0 4px 0;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.created-room-info p {
+  margin: 0;
+  color: #666;
+  font-size: 12px;
+}
+
+.delete-room-btn {
+  padding: 6px 12px;
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.delete-room-btn:hover {
+  background: #d9363e;
+}
+
 /* 滚动条样式 */
-.section-content::-webkit-scrollbar {
+.section-content::-webkit-scrollbar,
+#my-created-rooms-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.section-content::-webkit-scrollbar-track {
+.section-content::-webkit-scrollbar-track,
+#my-created-rooms-list::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 3px;
 }
 
-.section-content::-webkit-scrollbar-thumb {
+.section-content::-webkit-scrollbar-thumb,
+#my-created-rooms-list::-webkit-scrollbar-thumb {
   background: rgba(102, 126, 234, 0.3);
   border-radius: 3px;
 }
 
-.section-content::-webkit-scrollbar-thumb:hover {
+.section-content::-webkit-scrollbar-thumb:hover,
+#my-created-rooms-list::-webkit-scrollbar-thumb:hover {
   background: rgba(102, 126, 234, 0.5);
 }

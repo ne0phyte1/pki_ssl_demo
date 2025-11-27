@@ -8,11 +8,6 @@
   const allRoomsListEl = document.getElementById("all-rooms-list");
   const privateChatsListEl = document.getElementById("private-chats-list");
   const currentRoomEl = document.getElementById("current-room");
-  const createRoomBtn = document.getElementById("create-room-btn");
-  const createRoomModal = document.getElementById("create-room-modal");
-  const closeModal = document.querySelector(".close");
-  const createRoomForm = document.getElementById("create-room-form");
-  const roomNameInput = document.getElementById("room-name-input");
   const privateChatControls = document.querySelector(".private-chat-controls");
   const privateChatWithEl = document.getElementById("private-chat-with");
   const exitPrivateChatBtn = document.getElementById("exit-private-chat");
@@ -27,7 +22,13 @@
   let currentPrivateChat = null;
 
   // 设置当前用户
-  window.me = document.querySelector('.me').textContent.replace('我：', '');
+  const meElement = document.querySelector('.me');
+  if (meElement) {
+    window.me = meElement.textContent.replace('我：', '').trim();
+  } else {
+    console.error('无法找到.me元素，请检查HTML结构');
+    window.me = '未知用户';
+  }
 
   function appendMessage(text, user, time, isSystem, isPrivate) {
     const div = document.createElement("div");
@@ -102,30 +103,6 @@
     currentRoomEl.textContent = `简化 QQ 安全通讯系统 - 当前聊天室: ${roomName}`;
   }
 
-  // 模态框控制
-  createRoomBtn.addEventListener('click', function() {
-    createRoomModal.style.display = 'block';
-  });
-
-  closeModal.addEventListener('click', function() {
-    createRoomModal.style.display = 'none';
-  });
-
-  window.addEventListener('click', function(event) {
-    if (event.target == createRoomModal) {
-      createRoomModal.style.display = 'none';
-    }
-  });
-
-  createRoomForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const roomName = roomNameInput.value.trim();
-    if (roomName) {
-      socket.emit('create_room', { room_name: roomName });
-      roomNameInput.value = '';
-      createRoomModal.style.display = 'none';
-    }
-  });
 
   // 私人聊天控制
   exitPrivateChatBtn.addEventListener('click', function() {
@@ -222,12 +199,6 @@
         <span class="room-name ${roomName === currentRoom ? 'active' : ''}">${roomName}</span>
       `;
       
-      // 添加上下文菜单事件
-      li.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        showRoomContextMenu(e, roomName, true);
-      });
-      
       // 左键点击进入聊天室
       li.addEventListener('click', function() {
         socket.emit('switch_room', { room_name: roomName });
@@ -237,120 +208,6 @@
     });
   });
 
-  // 收到聊天室列表
-  socket.on("chat_rooms_list", function (rooms) {
-    allRoomsListEl.innerHTML = "";
-    rooms.forEach(function (room) {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span>${room.name}</span>
-        <small>创建者: ${room.created_by}</small>
-      `;
-      
-      // 添加上下文菜单事件
-      li.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-        showRoomContextMenu(e, room.name, false);
-      });
-      
-      allRoomsListEl.appendChild(li);
-    });
-  });
-
-  // 显示聊天室上下文菜单
-  function showRoomContextMenu(event, roomName, isUserRoom) {
-    // 移除现有的上下文菜单
-    const existingMenu = document.getElementById('room-context-menu');
-    if (existingMenu) {
-      existingMenu.remove();
-    }
-
-    // 创建上下文菜单
-    const contextMenu = document.createElement('div');
-    contextMenu.id = 'room-context-menu';
-    contextMenu.className = 'context-menu';
-    contextMenu.style.position = 'fixed';
-    contextMenu.style.left = event.clientX + 'px';
-    contextMenu.style.top = event.clientY + 'px';
-    contextMenu.style.zIndex = '1001';
-    contextMenu.style.background = 'var(--sidebar-bg)';
-    contextMenu.style.border = '1px solid var(--sidebar-border)';
-    contextMenu.style.borderRadius = '8px';
-    contextMenu.style.padding = '0.5rem 0';
-    contextMenu.style.boxShadow = 'var(--shadow-lg)';
-    contextMenu.style.minWidth = '120px';
-
-    // 菜单选项
-    const menuItems = [];
-
-    if (isUserRoom) {
-      // 用户已加入的聊天室
-      menuItems.push({
-        text: '进入聊天',
-        action: function() {
-          socket.emit('switch_room', { room_name: roomName });
-        }
-      });
-      
-      if (roomName !== 'general') {
-        menuItems.push({
-          text: '退出聊天室',
-          action: function() {
-            socket.emit('leave_room', { room_name: roomName });
-          }
-        });
-      }
-    } else {
-      // 用户未加入的聊天室
-      menuItems.push({
-        text: '加入聊天室',
-        action: function() {
-          socket.emit('join_room', { room_name: roomName });
-        }
-      });
-    }
-
-    // 添加菜单项
-    menuItems.forEach(item => {
-      const menuItem = document.createElement('div');
-      menuItem.className = 'context-menu-item';
-      menuItem.textContent = item.text;
-      menuItem.style.padding = '0.5rem 1rem';
-      menuItem.style.cursor = 'pointer';
-      menuItem.style.fontSize = '0.875rem';
-      menuItem.style.color = 'var(--sidebar-text)';
-      menuItem.style.transition = 'var(--transition)';
-      
-      menuItem.addEventListener('mouseenter', function() {
-        menuItem.style.background = 'var(--sidebar-hover)';
-      });
-      
-      menuItem.addEventListener('mouseleave', function() {
-        menuItem.style.background = 'transparent';
-      });
-      
-      menuItem.addEventListener('click', function() {
-        item.action();
-        contextMenu.remove();
-      });
-      
-      contextMenu.appendChild(menuItem);
-    });
-
-    document.body.appendChild(contextMenu);
-
-    // 点击其他地方关闭菜单
-    const closeMenu = function(e) {
-      if (!contextMenu.contains(e.target)) {
-        contextMenu.remove();
-        document.removeEventListener('click', closeMenu);
-      }
-    };
-    
-    setTimeout(() => {
-      document.addEventListener('click', closeMenu);
-    }, 100);
-  }
 
   // 收到聊天室历史
   socket.on("room_history", function (data) {
@@ -404,5 +261,6 @@
       appendMessage(msg.text, displayName, msg.time, false, true);
     });
   });
+
 
 })();
