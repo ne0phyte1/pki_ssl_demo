@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  pki-ssl-demo:
+    build: .
+    container_name: pki-ssl-demo
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./web/db:/app/web/db
+      - ./server:/app/server
+      - ./ca-chain.crt:/app/ca-chain.crt
+    environment:
+      - FLASK_APP=web/app.py
+      - FLASK_ENV=production
+    restart: unless-stopped

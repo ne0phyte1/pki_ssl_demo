@@ -1360,4 +1360,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8443,
         ssl_context=(cert_path, key_path),
+        allow_unsafe_werkzeug=True,
     )
