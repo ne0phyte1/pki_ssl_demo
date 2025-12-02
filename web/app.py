@@ -108,6 +108,12 @@ init_db()
 # 记录在线用户：sid -> username
 online_users = {}
 
+def emit_to_username(target_username, event_name, payload):
+    """向指定用户的所有会话发送Socket事件"""
+    for sid, online_username in online_users.items():
+        if online_username == target_username:
+            socketio.emit(event_name, payload, to=sid)
+
 # ---------------- 用户认证函数 ----------------
 
 def register_user(username, password):
@@ -150,19 +156,47 @@ def authenticate_user(username, password):
             conn.close()
 
 def save_chat_message(username, message, room_id='general'):
-    """保存聊天消息到数据库"""
+    """保存聊天消息到数据库并返回消息ID"""
     conn = None
+    message_id = None
     try:
         conn = sqlite3.connect('./web/db/chat_messages.db')
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO chat_messages (username, message, room_id) VALUES (?, ?, ?)', 
-                      (username, message, room_id))
+        cursor.execute(
+            'INSERT INTO chat_messages (username, message, room_id) VALUES (?, ?, ?)',
+            (username, message, room_id)
+        )
         conn.commit()
+        message_id = cursor.lastrowid
     except Exception as e:
-        print(f"保存聊天消息时出错: {e}")
+        print(f'保存聊天消息时出错: {e}')
     finally:
         if conn:
             conn.close()
+    return message_id
+
+def format_timestamp_parts(timestamp_value):
+    """返回消息展示时间和完整时间字符串"""
+    default_display = '未知时间'
+    default_full = '未知时间'
+    if timestamp_value is None:
+        return default_display, default_full
+    try:
+        if isinstance(timestamp_value, datetime):
+            display = timestamp_value.strftime('%H:%M:%S')
+            full = timestamp_value.strftime('%Y-%m-%d %H:%M:%S')
+            return display, full
+        if isinstance(timestamp_value, str):
+            try:
+                parsed = datetime.fromisoformat(timestamp_value)
+                return parsed.strftime('%H:%M:%S'), parsed.strftime('%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                if ' ' in timestamp_value:
+                    parts = timestamp_value.split(' ')
+                    return parts[-1], timestamp_value
+        return str(timestamp_value), str(timestamp_value)
+    except Exception:
+        return default_display, default_full
 
 def load_chat_history(room_id='general', limit=100):
     """从数据库加载指定聊天室的历史"""
@@ -171,41 +205,28 @@ def load_chat_history(room_id='general', limit=100):
         conn = sqlite3.connect('./web/db/chat_messages.db')
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT username, message, timestamp 
+            SELECT id, username, message, room_id, timestamp 
             FROM chat_messages 
             WHERE room_id = ?
             ORDER BY timestamp DESC 
             LIMIT ?
         ''', (room_id, limit))
         messages = cursor.fetchall()
-        
-        # 转换为与之前兼容的格式
         history = []
-        for username, message, timestamp in reversed(messages):
-            # 安全处理时间戳转换
-            try:
-                if timestamp is None:
-                    time_str = "未知时间"
-                elif isinstance(timestamp, str):
-                    # 尝试从字符串中提取时间部分
-                    if ' ' in timestamp:
-                        time_str = timestamp.split(' ')[1]
-                    else:
-                        time_str = timestamp
-                else:
-                    # 假设是datetime对象
-                    time_str = timestamp.strftime("%H:%M:%S")
-            except Exception:
-                time_str = "时间错误"
-                
+        for message_id, username, message, room, timestamp in reversed(messages):
+            time_str, full_time = format_timestamp_parts(timestamp)
             history.append({
-                "user": username,
-                "text": message,
-                "time": time_str
+                'id': message_id,
+                'user': username,
+                'text': message,
+                'time': time_str,
+                'timestamp': full_time,
+                'room': room,
+                'type': 'room'
             })
         return history
     except Exception as e:
-        print(f"加载聊天历史时出错: {e}")
+        print(f'加载聊天历史时出错: {e}')
         return []
     finally:
         if conn:
@@ -302,19 +323,24 @@ def get_user_rooms(username):
             conn.close()
 
 def save_private_message(from_user, to_user, message):
-    """保存私人消息到数据库"""
+    """保存私人消息到数据库并返回消息ID"""
+    conn = None
+    message_id = None
     try:
         conn = sqlite3.connect('./web/db/chat_messages.db')
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO private_messages (from_user, to_user, message) VALUES (?, ?, ?)', 
-                      (from_user, to_user, message))
+        cursor.execute(
+            'INSERT INTO private_messages (from_user, to_user, message) VALUES (?, ?, ?)',
+            (from_user, to_user, message)
+        )
         conn.commit()
+        message_id = cursor.lastrowid
     except Exception as e:
-        print(f"保存私人消息失败: {e}")
-        return False
+        print(f'保存私人消息失败: {e}')
     finally:
-        conn.close()
-    return True
+        if conn:
+            conn.close()
+    return message_id
 
 def load_private_messages(user1, user2, limit=50):
     """加载两个用户之间的私人消息历史"""
@@ -323,40 +349,29 @@ def load_private_messages(user1, user2, limit=50):
         conn = sqlite3.connect('./web/db/chat_messages.db')
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT from_user, to_user, message, timestamp 
+            SELECT id, from_user, to_user, message, timestamp 
             FROM private_messages 
             WHERE (from_user = ? AND to_user = ?) OR (from_user = ? AND to_user = ?)
             ORDER BY timestamp ASC 
             LIMIT ?
         ''', (user1, user2, user2, user1, limit))
         messages = cursor.fetchall()
-        
         history = []
-        for from_user, to_user, message, timestamp in messages:
-            # 安全处理时间戳转换
-            try:
-                if timestamp is None:
-                    time_str = "未知时间"
-                elif isinstance(timestamp, str):
-                    # 尝试从字符串中提取时间部分
-                    if ' ' in timestamp:
-                        time_str = timestamp.split(' ')[1]
-                    else:
-                        time_str = timestamp
-                else:
-                    # 假设是datetime对象
-                    time_str = timestamp.strftime("%H:%M:%S")
-            except Exception:
-                time_str = "时间错误"
-                
+        for message_id, from_user, to_user, message, timestamp in messages:
+            time_str, full_time = format_timestamp_parts(timestamp)
             history.append({
-                "user": from_user,  # 使用发送者作为显示用户
-                "text": message,
-                "time": time_str
+                'id': message_id,
+                'user': from_user,
+                'text': message,
+                'time': time_str,
+                'timestamp': full_time,
+                'type': 'private',
+                'direction': 'outgoing' if from_user == user1 else 'incoming',
+                'partner': user2
             })
         return history
     except Exception as e:
-        print(f"加载私人消息历史时出错: {e}")
+        print(f'加载私人消息历史时出错: {e}')
         return []
     finally:
         if conn:
@@ -390,6 +405,145 @@ def get_private_chats(username):
     finally:
         if conn:
             conn.close()
+
+def fetch_user_room_messages(username, room_id=None, keyword=None, limit=100):
+    """获取用户在聊天室中发送的消息"""
+    conn = None
+    try:
+        conn = sqlite3.connect('./web/db/chat_messages.db')
+        cursor = conn.cursor()
+        query = '''
+            SELECT id, message, room_id, timestamp
+            FROM chat_messages
+            WHERE username = ?
+        '''
+        params = [username]
+        if room_id:
+            query += ' AND room_id = ?'
+            params.append(room_id)
+        if keyword:
+            query += ' AND message LIKE ?'
+            params.append(f'%{keyword}%')
+        query += ' ORDER BY timestamp DESC LIMIT ?'
+        params.append(limit)
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        messages = []
+        for message_id, message, room, timestamp in rows:
+            time_str, full_time = format_timestamp_parts(timestamp)
+            messages.append({
+                "id": message_id,
+                "text": message,
+                "time": time_str,
+                "timestamp": full_time,
+                "room": room,
+                "type": "room"
+            })
+        return messages
+    except Exception as e:
+        print(f"获取用户聊天室消息时出错: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def fetch_user_private_messages(username, partner=None, keyword=None, limit=100):
+    """获取用户发送的私人消息"""
+    conn = None
+    try:
+        conn = sqlite3.connect('./web/db/chat_messages.db')
+        cursor = conn.cursor()
+        query = '''
+            SELECT id, to_user, message, timestamp
+            FROM private_messages
+            WHERE from_user = ?
+        '''
+        params = [username]
+        if partner:
+            query += ' AND to_user = ?'
+            params.append(partner)
+        if keyword:
+            query += ' AND message LIKE ?'
+            params.append(f'%{keyword}%')
+        query += ' ORDER BY timestamp DESC LIMIT ?'
+        params.append(limit)
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        messages = []
+        for message_id, to_user, message, timestamp in rows:
+            time_str, full_time = format_timestamp_parts(timestamp)
+            messages.append({
+                "id": message_id,
+                "text": message,
+                "time": time_str,
+                "timestamp": full_time,
+                "partner": to_user,
+                "type": "private",
+                "direction": "outgoing"
+            })
+        return messages
+    except Exception as e:
+        print(f"获取私人消息列表时出错: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def delete_room_message_by_user(message_id, username):
+    """删除用户在聊天室内发送的消息"""
+    conn = None
+    try:
+        conn = sqlite3.connect('./web/db/chat_messages.db')
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT room_id FROM chat_messages WHERE id = ? AND username = ?',
+            (message_id, username)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return {"success": False, "error": "找不到消息或无权删除"}
+        room_id = row[0]
+        cursor.execute('DELETE FROM chat_messages WHERE id = ?', (message_id,))
+        conn.commit()
+        return {"success": True, "room_id": room_id}
+    except Exception as e:
+        print(f"删除聊天室消息时出错: {e}")
+        return {"success": False, "error": "服务器内部错误"}
+    finally:
+        if conn:
+            conn.close()
+
+def delete_private_message_by_user(message_id, username):
+    """删除用户发送的私人消息"""
+    conn = None
+    try:
+        conn = sqlite3.connect('./web/db/chat_messages.db')
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT to_user FROM private_messages WHERE id = ? AND from_user = ?',
+            (message_id, username)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return {"success": False, "error": "找不到消息或无权删除"}
+        other_user = row[0]
+        cursor.execute('DELETE FROM private_messages WHERE id = ?', (message_id,))
+        conn.commit()
+        return {"success": True, "other_user": other_user}
+    except Exception as e:
+        print(f"删除私人消息时出错: {e}")
+        return {"success": False, "error": "服务器内部错误"}
+    finally:
+        if conn:
+            conn.close()
+
+def normalize_limit(raw_value, default=50, max_limit=500):
+    """规范化分页参数"""
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(value, max_limit))
 
 # ---------------- 私有聊天室相关函数 ----------------
 
@@ -581,13 +735,16 @@ def dashboard():
     
     # 移除当前用户
     other_users = [user for user in all_users if user != username]
+    
+    private_partners = [chat['partner'] for chat in get_private_chats(username)]
 
     return render_template(
         "dashboard.html",
         username=username,
         public_rooms=public_rooms,
         user_rooms=user_rooms,
-        other_users=other_users
+        other_users=other_users,
+        private_partners=private_partners
     )
 
 @app.route("/register", methods=["GET", "POST"])
@@ -641,8 +798,77 @@ def chat():
         username=username,
         history=history,
         all_rooms=all_rooms,
-        user_rooms=user_rooms
+        user_rooms=user_rooms,
+        private_partners=[chat['partner'] for chat in get_private_chats(username)]
     )
+
+
+@app.route("/api/my-messages", methods=["GET"])
+def api_get_my_messages():
+    """返回当前用户的聊天记录"""
+    if "username" not in session:
+        return jsonify({"success": False, "error": "未登录"}), 401
+    
+    username = session["username"]
+    message_type = request.args.get("type", "room").lower()
+    limit = normalize_limit(request.args.get("limit", 50))
+    keyword = request.args.get("q", "").strip()
+    room_id = request.args.get("room", "").strip()
+    partner = request.args.get("partner", "").strip()
+    
+    if message_type == "private":
+        messages = fetch_user_private_messages(
+            username,
+            partner=partner or None,
+            keyword=keyword or None,
+            limit=limit,
+        )
+    else:
+        messages = fetch_user_room_messages(
+            username,
+            room_id=room_id or None,
+            keyword=keyword or None,
+            limit=limit,
+        )
+    
+    return jsonify({"success": True, "messages": messages})
+
+
+@app.route("/api/my-messages/<int:message_id>", methods=["DELETE"])
+def api_delete_my_message(message_id):
+    """允许用户删除自己的聊天记录"""
+    if "username" not in session:
+        return jsonify({"success": False, "error": "未登录"}), 401
+    
+    username = session["username"]
+    message_type = request.args.get("type", "room").lower()
+    
+    if message_type == "private":
+        result = delete_private_message_by_user(message_id, username)
+        if result.get("success"):
+            payload = {
+                "id": message_id,
+                "type": "private",
+                "partner": result.get("other_user")
+            }
+            emit_to_username(username, "private_message_deleted", payload)
+            other_user = result.get("other_user")
+            if other_user:
+                emit_to_username(other_user, "private_message_deleted", payload)
+    else:
+        result = delete_room_message_by_user(message_id, username)
+        if result.get("success"):
+            payload = {
+                "id": message_id,
+                "type": "room",
+                "room": result.get("room_id")
+            }
+            socketio.emit("chat_message_deleted", payload, room=result.get("room_id"))
+    
+    if not result.get("success"):
+        return jsonify({"success": False, "error": result.get("error", "删除失败")}), 400
+    
+    return jsonify({"success": True, "deleted_id": message_id})
 
 
 @app.route("/logout")
@@ -721,14 +947,22 @@ def handle_chat_message(data):
     current_room = user_current_rooms.get(request.sid, 'general')
     
     # 保存消息到数据库
-    save_chat_message(username, text, current_room)
+    message_id = save_chat_message(username, text, current_room)
+    if not message_id:
+        emit("system_message", {"text": "消息发送失败，请稍后重试"})
+        return
+    
+    now = datetime.now()
 
     # 构建消息对象用于广播
     msg = {
+        "id": message_id,
         "user": username,
         "text": text,
-        "time": datetime.now().strftime("%H:%M:%S"),
-        "room": current_room
+        "time": now.strftime("%H:%M:%S"),
+        "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "room": current_room,
+        "type": "room"
     }
 
     # 广播聊天消息到当前聊天室的所有用户
@@ -896,14 +1130,21 @@ def handle_private_message(data):
         return
     
     # 保存私人消息（无论用户是否在线）
-    save_private_message(username, to_user, text)
+    message_id = save_private_message(username, to_user, text)
+    if not message_id:
+        emit("system_message", {"text": "私人消息发送失败，请稍后重试"})
+        return
+    
+    now = datetime.now()
     
     # 构建私人消息对象
     msg = {
+        "id": message_id,
         "from_user": username,
         "to_user": to_user,
         "text": text,
-        "time": datetime.now().strftime("%H:%M:%S"),
+        "time": now.strftime("%H:%M:%S"),
+        "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
         "type": "private"
     }
     

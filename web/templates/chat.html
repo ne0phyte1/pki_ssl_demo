@@ -83,20 +83,35 @@
           <div class="chat-actions">
             <button class="action-btn" onclick="switchRoom('general')">默认聊天室</button>
             <button class="action-btn" onclick="window.location.href='{{ url_for('dashboard') }}'">管理聊天室</button>
+            <button class="action-btn" onclick="window.location.href='{{ url_for('dashboard') }}#history-card'">聊天记录</button>
           </div>
-        </header>
 
         <section class="messages-container">
           <div class="chat-inner-frame" id="chat-inner-frame">
             <div class="messages" id="messages">
               {% for msg in history %}
-                <div class="message {% if msg.user == username %}message-own{% else %}message-other{% endif %}">
+                <div
+                  class="message {% if msg.user == username %}message-own{% else %}message-other{% endif %}"
+                  data-message-id="{{ msg.id }}"
+                  data-message-type="{{ msg.type or 'room' }}"
+                  {% if msg.room %}data-room-id="{{ msg.room }}"{% endif %}
+                >
                   <div class="message-inner">
                     <div class="message-avatar">{{ msg.user[0]|upper }}</div>
                     <div class="message-content">
                       <div class="message-header">
                         <span class="message-username">{{ msg.user }}</span>
-                        <span class="message-time">{{ msg.time }}</span>
+                        <span class="message-time" title="{{ msg.timestamp }}">{{ msg.time }}</span>
+                        {% if msg.user == username and msg.id %}
+                          <button
+                            type="button"
+                            class="message-delete-btn"
+                            data-message-id="{{ msg.id }}"
+                            data-message-type="{{ msg.type or 'room' }}"
+                            aria-label="删除消息"
+                            title="删除消息"
+                          >&times;</button>
+                        {% endif %}
                       </div>
                       <div class="message-text">{{ msg.text }}</div>
                     </div>
@@ -280,6 +295,7 @@
       const themePanel = document.getElementById("theme-panel");
       const emojiBtn = document.getElementById("emoji-btn");
       const emojiPanel = document.getElementById("emoji-panel");
+      const currentUsername = "{{ username }}";
 
       // 从sessionStorage获取当前房间和私聊信息
       let currentRoom = sessionStorage.getItem('currentRoom') || 'general';
@@ -356,6 +372,52 @@
         });
       }
 
+      function escapeHtml(text = '') {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      async function requestDeleteMessage(messageId, messageType = 'room') {
+        if (!messageId) return false;
+        try {
+          const response = await fetch(`/api/my-messages/${messageId}?type=${messageType}`, {
+            method: 'DELETE',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          const result = await response.json();
+          if (!result.success) {
+            console.warn(result.error || '删除消息失败');
+            return false;
+          }
+          return true;
+        } catch (error) {
+          console.error('删除消息失败', error);
+          return false;
+        }
+      }
+
+      function removeMessageElement(messageId, messageType = 'room') {
+        if (!messageId) return;
+        const selector = `.message[data-message-id="${messageId}"][data-message-type="${messageType}"]`;
+        document.querySelectorAll(selector).forEach(el => el.remove());
+      }
+
+      async function handleMessageDeletion(messageId, messageType = 'room') {
+        if (!messageId) {
+          return;
+        }
+        const success = await requestDeleteMessage(messageId, messageType);
+        if (success) {
+          removeMessageElement(messageId, messageType);
+        }
+      }
+
       // 初始化页面状态
       updateRoomDisplay();
       updatePrivateChatIndicator();
@@ -396,31 +458,80 @@
         if (isSystem) {
           const systemMsg = document.createElement("div");
           systemMsg.className = "system-message";
-          systemMsg.innerHTML = `<div class="system-text">${msg.text}</div>`;
+          systemMsg.innerHTML = `<div class="system-text">${escapeHtml(msg.text || '')}</div>`;
           messagesEl.appendChild(systemMsg);
-        } else {
-          const messageDiv = document.createElement("div");
-          const isOwnMessage = msg.user === "{{ username }}";
-          
-          // 根据消息发送者决定样式类
-          messageDiv.className = `message ${isOwnMessage ? 'message-own' : 'message-other'}`;
-          
-          messageDiv.innerHTML = `
-            <div class="message-inner">
-              <div class="message-avatar">${msg.user[0].toUpperCase()}</div>
-              <div class="message-content">
-                <div class="message-header">
-                  <span class="message-username">${msg.user}</span>
-                  <span class="message-time">${msg.time}</span>
-                </div>
-                <div class="message-text">${msg.text}</div>
-              </div>
-            </div>
-          `;
-          
-          messagesEl.appendChild(messageDiv);
+          scrollToBottom();
+          return;
         }
-        
+
+        const messageDiv = document.createElement("div");
+        const isOwnMessage = msg.user === currentUsername;
+        const messageType = msg.type || (currentPrivateChat ? 'private' : 'room');
+        const messageId = msg.id || '';
+
+        messageDiv.className = `message ${isOwnMessage ? 'message-own' : 'message-other'}`;
+        if (messageId) {
+          messageDiv.dataset.messageId = messageId;
+          messageDiv.dataset.messageType = messageType;
+        }
+        if (msg.room) {
+          messageDiv.dataset.roomId = msg.room;
+        }
+        if (msg.partner) {
+          messageDiv.dataset.partner = msg.partner;
+        }
+
+        const innerDiv = document.createElement("div");
+        innerDiv.className = "message-inner";
+
+        const avatarDiv = document.createElement("div");
+        avatarDiv.className = "message-avatar";
+        avatarDiv.textContent = (msg.user || '?').charAt(0).toUpperCase();
+
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "message-content";
+
+        const headerDiv = document.createElement("div");
+        headerDiv.className = "message-header";
+
+        const usernameSpan = document.createElement("span");
+        usernameSpan.className = "message-username";
+        usernameSpan.textContent = msg.user || '匿名';
+
+        const timeSpan = document.createElement("span");
+        timeSpan.className = "message-time";
+        timeSpan.textContent = msg.time || '';
+        if (msg.timestamp) {
+          timeSpan.title = msg.timestamp;
+        }
+
+        headerDiv.appendChild(usernameSpan);
+        headerDiv.appendChild(timeSpan);
+
+        if (isOwnMessage && messageId) {
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "message-delete-btn";
+          deleteBtn.dataset.messageId = messageId;
+          deleteBtn.dataset.messageType = messageType;
+          deleteBtn.title = "删除消息";
+          deleteBtn.setAttribute("aria-label", "删除消息");
+          deleteBtn.innerHTML = "&times;";
+          headerDiv.appendChild(deleteBtn);
+        }
+
+        const textDiv = document.createElement("div");
+        textDiv.className = "message-text";
+        textDiv.textContent = msg.text || '';
+
+        contentDiv.appendChild(headerDiv);
+        contentDiv.appendChild(textDiv);
+
+        innerDiv.appendChild(avatarDiv);
+        innerDiv.appendChild(contentDiv);
+
+        messageDiv.appendChild(innerDiv);
+        messagesEl.appendChild(messageDiv);
         scrollToBottom();
       }
 
@@ -506,6 +617,16 @@
       });
 
       exitPrivateChatBtn.addEventListener("click", exitPrivateChat);
+      
+      messagesEl.addEventListener("click", function (event) {
+        const deleteBtn = event.target.closest(".message-delete-btn");
+        if (!deleteBtn) {
+          return;
+        }
+        const messageId = deleteBtn.dataset.messageId;
+        const messageType = deleteBtn.dataset.messageType || (currentPrivateChat ? 'private' : 'room');
+        handleMessageDeletion(messageId, messageType);
+      });
 
       // Socket.IO 事件处理
       socket.on("connect", function () {
@@ -536,9 +657,12 @@
           if (isRelevantMessage) {
             // 确保消息对象有正确的用户字段
             const displayMsg = {
+              id: msg.id,
               user: msg.from_user,
               text: msg.text,
-              time: msg.time
+              time: msg.time,
+              timestamp: msg.timestamp,
+              type: msg.type || 'private'
             };
             addMessage(displayMsg);
           }
@@ -632,6 +756,18 @@
           data.history.forEach(function (msg) {
             addMessage(msg);
           });
+        }
+      });
+
+      socket.on("chat_message_deleted", function (data) {
+        if (data && data.id) {
+          removeMessageElement(String(data.id), 'room');
+        }
+      });
+
+      socket.on("private_message_deleted", function (data) {
+        if (data && data.id) {
+          removeMessageElement(String(data.id), 'private');
         }
       });
 

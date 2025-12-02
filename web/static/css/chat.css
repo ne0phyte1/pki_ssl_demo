@@ -456,9 +456,10 @@ body {
 
 .message-content {
   background: var(--theme-message-other);
-  padding: 10px 12px;
+  padding: 10px 36px 10px 12px;
   border-radius: 8px;
   max-width: 100%;
+  position: relative;
   transition: background-color var(--transition-base);
 }
 
@@ -489,6 +490,29 @@ body {
   line-height: 1.5;
   word-wrap: break-word;
   font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.message-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0;
+  padding: 2px 4px;
+  transition: opacity var(--transition-base), color var(--transition-base);
+}
+
+.message-own .message-content:hover .message-delete-btn {
+  opacity: 0.9;
+}
+
+.message-delete-btn:hover {
+  color: var(--accent-color);
 }
 
 .system-message {

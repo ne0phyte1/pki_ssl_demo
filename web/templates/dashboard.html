@@ -199,6 +199,87 @@
         opacity: 0.9;
       }
       
+      .history-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      
+      .history-filter-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      
+      .history-filter-row label {
+        font-size: 0.75rem;
+        color: var(--theme-text-secondary);
+      }
+      
+      .history-control-input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--theme-border);
+        border-radius: 8px;
+        background: var(--theme-bg);
+        color: var(--theme-text-primary);
+        font-size: 0.85rem;
+      }
+      
+      .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 320px;
+        overflow-y: auto;
+      }
+      
+      .history-item {
+        padding: 0.75rem;
+        border-radius: 10px;
+        border: 1px solid var(--theme-border);
+        background: var(--theme-secondary);
+        position: relative;
+      }
+      
+      .history-item strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--theme-text-primary);
+      }
+      
+      .history-meta {
+        font-size: 0.75rem;
+        color: var(--theme-text-secondary);
+        margin-bottom: 0.25rem;
+      }
+      
+      .history-text {
+        font-size: 0.85rem;
+        color: var(--theme-text-primary);
+        line-height: 1.4;
+        white-space: pre-wrap;
+      }
+      
+      .history-delete-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        border: none;
+        background: transparent;
+        color: var(--danger-color, #d9534f);
+        cursor: pointer;
+        font-size: 0.8rem;
+      }
+      
+      .history-empty,
+      .history-loading {
+        text-align: center;
+        padding: 2rem 0;
+        color: var(--theme-text-secondary);
+        font-size: 0.85rem;
+      }
+      
       .join-btn {
         background: var(--online-status);
       }
@@ -457,6 +538,56 @@
             {% endif %}
           </div>
         </div>
+
+        <!-- 聊天记录管理卡片 -->
+        <div class="dashboard-card" id="history-card">
+          <div class="card-header">
+            <h2 class="card-title">我的聊天记录</h2>
+            <div class="quick-actions">
+              <button class="action-btn" id="history-refresh-btn">刷新</button>
+            </div>
+          </div>
+          
+          <div class="history-controls">
+            <div class="history-filter-row">
+              <label for="history-type-select">记录类型</label>
+              <select class="history-control-input" id="history-type-select">
+                <option value="room">聊天室</option>
+                <option value="private">私人消息</option>
+              </select>
+            </div>
+            <div class="history-filter-row" id="history-room-group">
+              <label for="history-room-select">选择聊天室</label>
+              <select class="history-control-input" id="history-room-select">
+                <option value="">全部聊天室</option>
+                {% for room_name in user_rooms %}
+                  <option value="{{ room_name }}">{{ room_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="history-filter-row" id="history-partner-group" style="display: none;">
+              <label for="history-partner-select">联系人</label>
+              <select class="history-control-input" id="history-partner-select">
+                <option value="">全部联系人</option>
+                {% for partner in private_partners %}
+                  <option value="{{ partner }}">{{ partner }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="history-filter-row">
+              <label for="history-search-input">关键字</label>
+              <input 
+                type="text" 
+                id="history-search-input" 
+                class="history-control-input" 
+                placeholder="按内容搜索">
+            </div>
+          </div>
+          
+          <div class="history-list" id="history-list">
+            <div class="history-empty">暂无聊天记录</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -584,6 +715,18 @@
       // 存储当前选择的房间和私聊对象
       let currentRoom = 'general';
       let currentPrivateChat = null;
+      const historyTypeSelect = document.getElementById('history-type-select');
+      const historyRoomGroup = document.getElementById('history-room-group');
+      const historyRoomSelect = document.getElementById('history-room-select');
+      const historyPartnerGroup = document.getElementById('history-partner-group');
+      const historyPartnerSelect = document.getElementById('history-partner-select');
+      const historySearchInput = document.getElementById('history-search-input');
+      const historyListEl = document.getElementById('history-list');
+      const historyRefreshBtn = document.getElementById('history-refresh-btn');
+      const historyState = {
+        type: 'room',
+        searchTimer: null
+      };
 
       // 设置当前房间并跳转到聊天页面
       function setCurrentRoom(roomName) {
@@ -754,6 +897,166 @@
           console.log(data.error || '解散聊天室失败');
         }
       });
+
+      function toggleHistoryFilters() {
+        if (!historyRoomGroup || !historyPartnerGroup) return;
+        if (historyState.type === 'private') {
+          historyRoomGroup.style.display = 'none';
+          historyPartnerGroup.style.display = 'flex';
+        } else {
+          historyRoomGroup.style.display = 'flex';
+          historyPartnerGroup.style.display = 'none';
+        }
+      }
+
+      function renderHistoryMessages(messages = []) {
+        if (!historyListEl) return;
+        if (!messages.length) {
+          historyListEl.innerHTML = '<div class=\"history-empty\">暂无聊天记录</div>';
+          return;
+        }
+        historyListEl.innerHTML = '';
+        messages.forEach(msg => {
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          const resolvedType = msg.type || historyState.type;
+          if (msg.id) {
+            item.dataset.messageId = msg.id;
+            item.dataset.messageType = resolvedType;
+          }
+
+          const title = document.createElement('strong');
+          if (resolvedType === 'private') {
+            title.textContent = `私人消息 • ${msg.partner || '未知联系人'}`;
+          } else {
+            title.textContent = `聊天室 • ${msg.room || '未知房间'}`;
+          }
+
+          const meta = document.createElement('div');
+          meta.className = 'history-meta';
+          meta.textContent = msg.timestamp || msg.time || '';
+
+          const body = document.createElement('div');
+          body.className = 'history-text';
+          body.textContent = msg.text || '';
+
+          item.appendChild(title);
+          item.appendChild(meta);
+          item.appendChild(body);
+
+          if (msg.id) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'history-delete-btn';
+            deleteBtn.type = 'button';
+            deleteBtn.dataset.messageId = msg.id;
+            deleteBtn.dataset.messageType = resolvedType;
+            deleteBtn.textContent = '删除';
+            item.appendChild(deleteBtn);
+          }
+
+          historyListEl.appendChild(item);
+        });
+      }
+
+      async function loadHistoryMessages() {
+        if (!historyListEl || !historyTypeSelect) return;
+        const params = new URLSearchParams({
+          type: historyState.type,
+          limit: 100
+        });
+        if (historyState.type === 'room' && historyRoomSelect && historyRoomSelect.value) {
+          params.append('room', historyRoomSelect.value);
+        }
+        if (historyState.type === 'private' && historyPartnerSelect && historyPartnerSelect.value) {
+          params.append('partner', historyPartnerSelect.value);
+        }
+        if (historySearchInput && historySearchInput.value.trim()) {
+          params.append('q', historySearchInput.value.trim());
+        }
+
+        historyListEl.innerHTML = '<div class=\"history-loading\">加载中...</div>';
+        try {
+          const response = await fetch(`/api/my-messages?${params.toString()}`);
+          const result = await response.json();
+          if (!result.success) {
+            historyListEl.innerHTML = `<div class=\"history-empty\">${result.error || '加载失败'}</div>`;
+            return;
+          }
+          renderHistoryMessages(result.messages || []);
+        } catch (error) {
+          console.error('加载聊天记录失败', error);
+          historyListEl.innerHTML = '<div class=\"history-empty\">加载失败，请稍后重试</div>';
+        }
+      }
+
+      async function deleteHistoryMessage(messageId, messageType = 'room') {
+        if (!messageId) return false;
+        try {
+          const response = await fetch(`/api/my-messages/${messageId}?type=${messageType}`, {
+            method: 'DELETE'
+          });
+          const result = await response.json();
+          if (!result.success) {
+            console.warn(result.error || '删除聊天记录失败');
+            return false;
+          }
+          return true;
+        } catch (error) {
+          console.error('删除聊天记录失败', error);
+          return false;
+        }
+      }
+
+      if (historyTypeSelect) {
+        historyTypeSelect.addEventListener('change', () => {
+          historyState.type = historyTypeSelect.value;
+          toggleHistoryFilters();
+          loadHistoryMessages();
+        });
+      }
+
+      if (historyRoomSelect) {
+        historyRoomSelect.addEventListener('change', loadHistoryMessages);
+      }
+
+      if (historyPartnerSelect) {
+        historyPartnerSelect.addEventListener('change', loadHistoryMessages);
+      }
+
+      if (historyRefreshBtn) {
+        historyRefreshBtn.addEventListener('click', loadHistoryMessages);
+      }
+
+      if (historySearchInput) {
+        historySearchInput.addEventListener('input', () => {
+          clearTimeout(historyState.searchTimer);
+          historyState.searchTimer = setTimeout(loadHistoryMessages, 400);
+        });
+      }
+
+      if (historyListEl) {
+        historyListEl.addEventListener('click', async (event) => {
+          const btn = event.target.closest('.history-delete-btn');
+          if (!btn) return;
+          const messageId = btn.dataset.messageId;
+          const messageType = btn.dataset.messageType || historyState.type;
+          const success = await deleteHistoryMessage(messageId, messageType);
+          if (success) {
+            const historyItem = btn.closest('.history-item');
+            if (historyItem) {
+              historyItem.remove();
+            }
+            if (!historyListEl.querySelector('.history-item')) {
+              historyListEl.innerHTML = '<div class=\"history-empty\">暂无聊天记录</div>';
+            }
+          }
+        });
+      }
+
+      if (historyListEl) {
+        toggleHistoryFilters();
+        loadHistoryMessages();
+      }
     </script>
   </body>
 </html>
