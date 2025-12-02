@@ -1,74 +1,36 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="white">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户注册</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
-      /* CSS 变量定义 */
-      :root {
-        --primary-color: #6366f1;
-        --primary-hover: #4f46e5;
-        --secondary-color: #8b5cf6;
-        --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --card-bg: rgba(255, 255, 255, 0.9);
-        --card-border: rgba(255, 255, 255, 0.3);
-        --text-primary: #1f2937;
-        --text-secondary: #6b7280;
-        --text-muted: #9ca3af;
-        --error-color: #ef4444;
-        --success-color: #10b981;
-        --border-radius-lg: 16px;
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-
       .register-container {
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 1rem;
-        background: var(--background-gradient);
+        background: var(--theme-bg);
       }
       
       .register-card {
         width: 100%;
         max-width: 400px;
         padding: 2.5rem;
-        background: var(--card-bg);
-        backdrop-filter: blur(20px);
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-xl);
-        border: 1px solid var(--card-border);
+        background: var(--theme-card-bg);
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--theme-border);
         text-align: center;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .register-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        z-index: 1;
       }
       
       .register-title {
         font-size: 1.75rem;
         font-weight: 700;
         margin-bottom: 1.5rem;
-        color: var(--text-primary);
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: var(--theme-primary);
       }
       
       .register-form {
@@ -86,23 +48,22 @@
       
       .form-label {
         font-weight: 500;
-        color: var(--text-primary);
+        color: var(--theme-text-primary);
         font-size: 0.875rem;
       }
       
       .form-input {
         padding: 0.875rem 1rem;
-        border: 2px solid #e5e7eb;
+        border: 1px solid var(--theme-border);
         border-radius: 8px;
         font-size: 0.875rem;
-        transition: var(--transition);
-        background: white;
+        transition: border-color 100ms ease;
       }
       
       .form-input:focus {
         outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        border-color: var(--theme-primary);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
       }
       
       .form-actions {
@@ -115,22 +76,22 @@
         border-radius: 8px;
         font-weight: 600;
         cursor: pointer;
-        transition: var(--transition);
+        transition: opacity 100ms ease;
       }
       
       .btn-primary {
-        background: var(--primary-color);
-        color: white;
+        background: var(--theme-primary);
+        color: var(--theme-bg);
+        width: 100%;
       }
       
       .btn-primary:hover {
-        background: var(--primary-hover);
-        transform: translateY(-1px);
+        opacity: 0.9;
       }
       
       .text-error {
         background: rgba(239, 68, 68, 0.1);
-        color: var(--error-color);
+        color: var(--error-red);
         padding: 0.75rem 1rem;
         border-radius: 8px;
         border: 1px solid rgba(239, 68, 68, 0.2);
@@ -144,41 +105,32 @@
       .login-prompt {
         margin-top: 1.5rem;
         font-size: 0.875rem;
-        color: var(--text-secondary);
+        color: var(--theme-text-secondary);
       }
       
       .login-prompt a {
-        color: var(--primary-color);
+        color: var(--theme-primary);
         text-decoration: none;
         font-weight: 600;
-        transition: var(--transition);
+        transition: opacity 100ms ease;
       }
       
       .login-prompt a:hover {
-        color: var(--primary-hover);
+        opacity: 0.8;
         text-decoration: underline;
       }
-
-      /* 动画效果 */
-      .fade-in {
-        animation: fadeIn 0.5s ease-out;
-      }
-      
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
     </style>
+    <script>
+      // 加载保存的主题
+      (function() {
+        const savedTheme = localStorage.getItem('chat-theme') || 'white';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      })();
+    </script>
   </head>
   <body>
-    <div class="register-container fade-in">
-      <div class="card register-card">
+    <div class="register-container">
+      <div class="register-card">
         <h1 class="register-title">用户注册</h1>
         <form method="post" class="register-form">
           <div class="form-group">
@@ -197,7 +149,7 @@
           </div>
           
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">注册</button>
+            <button type="submit" class="btn btn-primary">注册</button>
           </div>
           
           {% if error %}

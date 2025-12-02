@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="white">
   <head>
     <meta charset="utf-8">
     <title>聊天仪表盘 - 安全通讯系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <style>
       .dashboard-layout {
         min-height: 100vh;
-        background: var(--background-gradient);
+        background: var(--theme-bg);
         padding: 1rem;
       }
       
@@ -22,7 +22,7 @@
       .dashboard-title {
         font-size: 1.75rem;
         font-weight: 700;
-        color: white;
+        color: var(--theme-text-primary);
         margin: 0;
       }
       
@@ -30,22 +30,37 @@
         display: flex;
         align-items: center;
         gap: 1rem;
-        color: white;
+        color: var(--theme-text-primary);
       }
       
       .logout-btn {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
+        background: var(--theme-secondary);
+        color: var(--theme-text-primary);
         padding: 0.5rem 1rem;
         border-radius: 8px;
         text-decoration: none;
-        transition: var(--transition);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: opacity 100ms ease;
+        border: 1px solid var(--theme-border);
       }
       
       .logout-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-1px);
+        opacity: 0.8;
+      }
+      
+      .theme-toggle-btn {
+        background: var(--theme-secondary);
+        border: 1px solid var(--theme-border);
+        color: var(--theme-text-primary);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: opacity 100ms ease;
+        margin-left: 0.5rem;
+      }
+      
+      .theme-toggle-btn:hover {
+        opacity: 0.8;
       }
       
       .dashboard-grid {
@@ -56,13 +71,12 @@
       }
       
       .dashboard-card {
-        background: var(--card-bg);
-        backdrop-filter: blur(20px);
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-xl);
-        border: 1px solid var(--card-border);
+        background: var(--theme-card-bg);
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--theme-border);
         padding: 1.75rem;
-        transition: var(--transition);
+        transition: transform 100ms ease;
         position: relative;
         overflow: hidden;
       }
@@ -74,12 +88,12 @@
         left: 0;
         width: 4px;
         height: 100%;
-        background: linear-gradient(to bottom, var(--primary-color), var(--secondary-color));
+        background: var(--theme-primary);
       }
       
       .dashboard-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-xl), 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
       }
       
       .card-header {
@@ -88,13 +102,13 @@
         align-items: center;
         margin-bottom: 1.5rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        border-bottom: 1px solid var(--theme-border);
       }
       
       .card-title {
         font-size: 1.25rem;
         font-weight: 700;
-        color: var(--text-primary);
+        color: var(--theme-text-primary);
         margin: 0;
         display: flex;
         align-items: center;
@@ -106,7 +120,7 @@
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: var(--primary-color);
+        background: var(--theme-primary);
       }
       
       .quick-actions {
@@ -115,22 +129,19 @@
       }
       
       .action-btn {
-        background: var(--primary-color);
-        color: white;
+        background: var(--theme-primary);
+        color: var(--theme-bg);
         border: none;
         padding: 0.5rem 1rem;
         border-radius: 8px;
         font-size: 0.75rem;
         cursor: pointer;
-        transition: var(--transition);
+        transition: opacity 100ms ease;
         font-weight: 600;
-        box-shadow: var(--shadow-sm);
       }
       
       .action-btn:hover {
-        background: var(--primary-hover);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        opacity: 0.9;
       }
       
       .room-list, .user-list {
@@ -144,16 +155,14 @@
         justify-content: space-between;
         align-items: center;
         padding: 1rem;
-        background: rgba(255, 255, 255, 0.7);
+        background: var(--theme-secondary);
         border-radius: 12px;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        transition: var(--transition);
+        border: 1px solid var(--theme-border);
+        transition: background-color 100ms ease;
       }
       
       .room-item:hover, .user-item:hover {
-        background: rgba(255, 255, 255, 0.9);
-        transform: translateX(4px);
-        box-shadow: var(--shadow-sm);
+        background: var(--theme-border);
       }
       
       .room-info, .user-info-compact {
@@ -162,64 +171,56 @@
       
       .room-name, .user-name {
         font-weight: 600;
-        color: var(--text-primary);
+        color: var(--theme-text-primary);
         margin-bottom: 0.25rem;
         font-size: 0.9rem;
       }
       
       .room-meta, .user-meta {
         font-size: 0.7rem;
-        color: var(--text-secondary);
+        color: var(--theme-text-secondary);
         opacity: 0.8;
       }
       
       .enter-btn, .join-btn, .chat-btn {
-        background: var(--primary-color);
-        color: white;
+        background: var(--theme-primary);
+        color: var(--theme-bg);
         padding: 0.5rem 1rem;
         border-radius: 8px;
         text-decoration: none;
         font-size: 0.75rem;
-        transition: var(--transition);
+        transition: opacity 100ms ease;
         border: none;
         cursor: pointer;
         font-weight: 600;
-        box-shadow: var(--shadow-sm);
       }
       
       .enter-btn:hover, .join-btn:hover, .chat-btn:hover {
-        background: var(--primary-hover);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-md);
+        opacity: 0.9;
       }
       
       .join-btn {
-        background: var(--success-color);
-      }
-      
-      .join-btn:hover {
-        background: #0da271;
+        background: var(--online-status);
       }
       
       .user-avatar {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
+        background: var(--theme-primary);
+        color: var(--theme-bg);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
         margin-right: 0.75rem;
         font-size: 0.8rem;
-        box-shadow: var(--shadow-sm);
       }
       
       .empty-state {
         text-align: center;
         padding: 2.5rem 1rem;
-        color: var(--text-secondary);
+        color: var(--theme-text-secondary);
         font-size: 0.9rem;
       }
       
@@ -240,21 +241,19 @@
       .create-room-btn {
         width: 100%;
         background: transparent;
-        border: 2px dashed var(--primary-color);
-        color: var(--primary-color);
+        border: 2px dashed var(--theme-primary);
+        color: var(--theme-primary);
         padding: 1rem;
         border-radius: 12px;
         cursor: pointer;
-        transition: var(--transition);
+        transition: opacity 100ms ease, background-color 100ms ease, color 100ms ease;
         font-weight: 700;
         font-size: 0.9rem;
       }
       
       .create-room-btn:hover {
-        background: var(--primary-color);
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        background: var(--theme-primary);
+        color: var(--theme-bg);
       }
       
       /* 模态框样式 */
@@ -273,11 +272,10 @@
       }
       
       .modal-content {
-        background: var(--card-bg);
-        backdrop-filter: blur(20px);
-        border-radius: var(--border-radius-lg);
-        box-shadow: var(--shadow-xl);
-        border: 1px solid var(--card-border);
+        background: var(--theme-card-bg);
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--theme-border);
         padding: 2rem;
         max-width: 400px;
         width: 90%;
@@ -292,12 +290,12 @@
         border: none;
         font-size: 1.5rem;
         cursor: pointer;
-        color: var(--text-secondary);
+        color: var(--theme-text-secondary);
       }
       
       .modal-title {
         margin-bottom: 1.5rem;
-        color: var(--text-primary);
+        color: var(--theme-text-primary);
       }
       
       .modal-form {
@@ -308,32 +306,37 @@
       
       .modal-input {
         padding: 0.75rem 1rem;
-        border: 2px solid #e5e7eb;
+        border: 1px solid var(--theme-border);
         border-radius: 8px;
         font-size: 0.875rem;
-        transition: var(--transition);
+        background: var(--theme-bg);
+        color: var(--theme-text-primary);
+        transition: border-color 100ms ease;
       }
       
       .modal-input:focus {
         outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        border-color: var(--theme-primary);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
       }
       
       .modal-submit {
-        background: var(--primary-color);
-        color: white;
+        background: var(--theme-primary);
+        color: var(--theme-bg);
         border: none;
         padding: 0.75rem 1.5rem;
         border-radius: 8px;
         font-weight: 600;
         cursor: pointer;
-        transition: var(--transition);
+        transition: opacity 100ms ease;
       }
       
       .modal-submit:hover {
-        background: var(--primary-hover);
-        transform: translateY(-1px);
+        opacity: 0.9;
+      }
+      
+      .theme-option:hover {
+        background: var(--theme-secondary);
       }
       
       @media (max-width: 768px) {
@@ -361,6 +364,7 @@
         <h1 class="dashboard-title">安全通讯系统</h1>
         <div class="user-info">
           <span>欢迎，{{ username }}！</span>
+          <button class="theme-toggle-btn" id="theme-toggle-btn" title="切换主题">🎨</button>
           <a class="logout-btn" href="{{ url_for('logout') }}">退出登录</a>
         </div>
       </header>
@@ -456,6 +460,34 @@
       </div>
     </div>
 
+    <!-- 主题选择面板 -->
+    <div class="theme-panel" id="theme-panel" style="position: fixed; bottom: 20px; right: 20px; background: var(--theme-card-bg); border: 1px solid var(--theme-border); border-radius: 8px; padding: 12px; display: none; flex-direction: column; gap: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-width: 200px;">
+      <div class="theme-option" data-theme="gray" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background-color 100ms ease;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: #6C757D; flex-shrink: 0; border: 1px solid var(--theme-border);"></div>
+        <span style="font-size: 13px; color: var(--theme-text-primary);">素雅灰</span>
+      </div>
+      <div class="theme-option" data-theme="white" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background-color 100ms ease;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: #333333; flex-shrink: 0; border: 1px solid var(--theme-border);"></div>
+        <span style="font-size: 13px; color: var(--theme-text-primary);">极简白</span>
+      </div>
+      <div class="theme-option" data-theme="yellow" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background-color 100ms ease;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: #FFC107; flex-shrink: 0; border: 1px solid var(--theme-border);"></div>
+        <span style="font-size: 13px; color: var(--theme-text-primary);">盛夏黄</span>
+      </div>
+      <div class="theme-option" data-theme="pink" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background-color 100ms ease;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: #FF69B4; flex-shrink: 0; border: 1px solid var(--theme-border);"></div>
+        <span style="font-size: 13px; color: var(--theme-text-primary);">桃桃粉</span>
+      </div>
+      <div class="theme-option" data-theme="blue" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background-color 100ms ease;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: #2D7DD2; flex-shrink: 0; border: 1px solid var(--theme-border);"></div>
+        <span style="font-size: 13px; color: var(--theme-text-primary);">经典蓝</span>
+      </div>
+      <div class="theme-option" data-theme="black" style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; transition: background-color 100ms ease;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; background: #E0E0E0; flex-shrink: 0; border: 1px solid var(--theme-border);"></div>
+        <span style="font-size: 13px; color: var(--theme-text-primary);">极致黑</span>
+      </div>
+    </div>
+
     <!-- 模态框 -->
     <div id="create-room-modal" class="modal">
       <div class="modal-content">
@@ -506,6 +538,41 @@
     <!-- Socket.IO 客户端 -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
+      // 加载保存的主题
+      (function() {
+        const savedTheme = localStorage.getItem('chat-theme') || 'white';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      })();
+      
+      // 主题切换功能
+      const themeToggleBtn = document.getElementById('theme-toggle-btn');
+      const themePanel = document.getElementById('theme-panel');
+      
+      if (themeToggleBtn && themePanel) {
+        themeToggleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
+        });
+        
+        // 点击其他地方关闭主题面板
+        document.addEventListener('click', function(e) {
+          if (!themePanel.contains(e.target) && !themeToggleBtn.contains(e.target)) {
+            themePanel.style.display = 'none';
+          }
+        });
+        
+        // 选择主题
+        document.querySelectorAll('.theme-option').forEach(option => {
+          option.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const theme = this.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('chat-theme', theme);
+            themePanel.style.display = 'none';
+          });
+        });
+      }
+      
       // 与后端建立 Socket.IO 连接
       const socket = io({
         transports: ["websocket"]
